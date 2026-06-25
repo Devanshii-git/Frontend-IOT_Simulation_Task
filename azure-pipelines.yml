@@ -1,0 +1,42 @@
+# frontend-ci.yml
+# Azure Pipeline CI Skeleton for React/Vite (Frontend)
+# Place this file in the root of your frontend GitHub repository
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  nodeVersion: '20.x'
+
+steps:
+- task: NodeTool@0
+  inputs:
+    versionSpec: '$(nodeVersion)'
+  displayName: 'Install Node.js'
+
+- script: |
+    # npm ci
+    echo "NPM modules installed (Skeleton)"
+  displayName: 'Install dependencies'
+
+- script: |
+    # npm run lint
+    echo "Linting passed (Skeleton)"
+  displayName: 'Run Linting'
+
+- script: |
+    # npm run test
+    echo "Tests passed (Skeleton)"
+  displayName: 'Run Unit Tests'
+
+- script: |
+    # npm run build
+    echo "Build successful (Skeleton)"
+  displayName: 'Build Frontend Application'
+
