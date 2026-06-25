@@ -45,8 +45,8 @@ export function DevicesPage() {
     <div className="space-y-6 select-none">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Devices</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Manage and configure your active and simulated sensors.</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-text-primary">Devices</h1>
+          <p className="text-sm text-text-muted font-medium">Manage and configure your active and simulated sensors.</p>
         </div>
         <Button onClick={() => setShowAdd(true)} className="h-10 text-xs">
           <Plus className="h-4 w-4" /> Add Device
@@ -56,12 +56,12 @@ export function DevicesPage() {
       {/* Filter and View Controls bar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1 group">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted group-focus-within:text-accent transition-colors" />
           <input
             placeholder="Search devices..."
             value={filters.search}
             onChange={(e) => setFilters({ search: e.target.value })}
-            className="h-10 w-full rounded-md border border-slate-200 bg-white pl-10 pr-4 text-sm dark:border-slate-800 dark:bg-slate-950 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:focus:ring-primary-400 placeholder:text-slate-400 transition-all"
+            className="h-10 w-full rounded-md border border-border bg-bg-surface pl-10 pr-4 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-subtle/40 focus:border-border-accent placeholder:text-text-muted transition-all"
           />
         </div>
         <div className="flex flex-wrap gap-2 items-center">
@@ -88,7 +88,7 @@ export function DevicesPage() {
             onChange={(e) => setFilters({ location: e.target.value })}
             className="w-36 h-10"
           />
-          <div className="flex gap-1 border border-slate-200 dark:border-slate-800 rounded-md p-1 bg-slate-50 dark:bg-slate-900 h-10">
+          <div className="flex gap-1 border border-border rounded-md p-1 bg-bg-primary h-10">
             <Button variant={view === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 min-h-[32px] min-w-[32px]" onClick={() => setView('grid')}>
               <LayoutGrid className="h-4 w-4" />
             </Button>
@@ -106,11 +106,11 @@ export function DevicesPage() {
         </div>
       ) : filtered.length === 0 ? (
         <Card className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bg-elevated text-text-muted">
             <Search className="h-6 w-6" />
           </div>
-          <h3 className="mt-4 font-bold text-slate-800 dark:text-white">No devices found</h3>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 font-medium">Try adjusting your filters or add a new device.</p>
+          <h3 className="mt-4 font-bold text-text-primary">No devices found</h3>
+          <p className="mt-1 text-sm text-text-muted font-medium">Try adjusting your filters or add a new device.</p>
           <div className="mt-6 flex gap-3">
             <Button variant="outline" className="h-10 text-xs" onClick={clearFilters}>
               Clear Filters
@@ -135,15 +135,15 @@ export function DevicesPage() {
                   {/* Metadata */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2.5">
-                      <h3 className="font-bold text-slate-900 dark:text-slate-50 truncate">{device.name}</h3>
+                      <h3 className="font-bold text-text-primary truncate">{device.name}</h3>
                       <StatusPill status={device.status} />
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-1">
+                    <p className="text-xs text-text-muted font-semibold mt-1">
                       {device.location} &bull; {device.protocol}
                     </p>
-                    <div className="mt-2 flex items-center gap-3 text-xs text-slate-400 font-medium">
+                    <div className="mt-2 flex items-center gap-3 text-xs text-text-muted font-medium">
                       <SignalStrength strength={device.signalStrength} />
-                      <span className="text-[11px] text-slate-400">{formatRelativeTime(device.lastPing)}</span>
+                      <span className="text-[11px] text-text-muted">{formatRelativeTime(device.lastPing)}</span>
                     </div>
                   </div>
                 </div>
@@ -152,7 +152,7 @@ export function DevicesPage() {
                 <div className={cn(
                   'flex items-center gap-4',
                   view === 'grid'
-                    ? 'mt-4 justify-between border-t border-slate-100 dark:border-slate-800 pt-3'
+                    ? 'mt-4 justify-between border-t border-border pt-3'
                     : 'shrink-0'
                 )}>
                   <Switch
@@ -163,10 +163,10 @@ export function DevicesPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/20"
+                    className="h-9 w-9 hover:bg-status-error/10 hover:text-status-error"
                     onClick={() => deleteDevice(device.id)}
                   >
-                    <Trash2 className="h-4 w-4 text-red-500" />
+                    <Trash2 className="h-4 w-4 text-status-error" />
                   </Button>
                 </div>
               </Card>

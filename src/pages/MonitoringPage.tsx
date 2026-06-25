@@ -79,9 +79,9 @@ export function MonitoringPage() {
   }, [selectedDevices, liveData, telemetryBuffers])
 
   const colors = [
-    { stroke: '#3b82f6', fill: 'rgba(59, 130, 246, 0.05)' },
-    { stroke: '#10b981', fill: 'rgba(16, 185, 129, 0.05)' },
-    { stroke: '#f59e0b', fill: 'rgba(245, 158, 11, 0.05)' },
+    { stroke: '#0D9488', fill: 'rgba(13, 148, 136, 0.05)' },
+    { stroke: '#0F766E', fill: 'rgba(15, 118, 110, 0.05)' },
+    { stroke: '#115E59', fill: 'rgba(17, 94, 89, 0.05)' },
   ]
 
   const getStats = (deviceId: string) => {
@@ -105,8 +105,8 @@ export function MonitoringPage() {
     <div className="space-y-6 select-none animate-in fade-in duration-300">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Monitoring</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Analyze real-time sensor streams and telemetry charts.</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-text-primary">Monitoring</h1>
+          <p className="text-sm text-text-muted font-medium">Analyze real-time sensor streams and telemetry charts.</p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
           <Select options={REFRESH_OPTIONS} value={refreshInterval} onChange={(e) => setRefreshInterval(e.target.value)} className="w-36 h-10" />
@@ -114,13 +114,13 @@ export function MonitoringPage() {
             type="date"
             value={dateRange.start}
             onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-            className="h-10 rounded-md border border-slate-205 px-3 text-xs font-semibold uppercase tracking-wider bg-white dark:border-slate-800 dark:bg-slate-950 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            className="h-10 rounded-md border border-border px-3 text-xs font-semibold uppercase tracking-wider bg-bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-subtle/40 focus:border-border-accent"
           />
           <input
             type="date"
             value={dateRange.end}
             onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-            className="h-10 rounded-md border border-slate-205 px-3 text-xs font-semibold uppercase tracking-wider bg-white dark:border-slate-800 dark:bg-slate-950 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            className="h-10 rounded-md border border-border px-3 text-xs font-semibold uppercase tracking-wider bg-bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-subtle/40 focus:border-border-accent"
           />
           <Button variant="outline" size="icon" className="h-10 w-10">
             <RefreshCw className="h-4 w-4" />
@@ -137,8 +137,8 @@ export function MonitoringPage() {
       {/* Select Overlay sensors card */}
       <Card>
         <CardHeader className="p-0">
-          <CardTitle className="text-sm font-semibold uppercase tracking-wider text-slate-500">Overlay Telemetry Channels</CardTitle>
-          <CardDescription className="text-xs font-medium text-slate-400 mt-1">Select up to 3 active devices to overlay on the graph below.</CardDescription>
+          <CardTitle className="text-sm font-semibold uppercase tracking-wider text-text-muted">Overlay Telemetry Channels</CardTitle>
+          <CardDescription className="text-xs font-medium text-text-muted mt-1">Select up to 3 active devices to overlay on the graph below.</CardDescription>
         </CardHeader>
         <CardContent className="p-0 mt-4 flex flex-wrap gap-2">
           {onlineDevices.map((d) => {
@@ -149,8 +149,8 @@ export function MonitoringPage() {
                 onClick={() => toggleDevice(d.id)}
                 className={`rounded-lg border px-3.5 py-2 text-xs font-bold transition-all cursor-pointer min-h-[38px] ${
                   selected
-                    ? 'border-primary-500 bg-primary-600 text-white shadow-sm shadow-primary-500/10'
-                    : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 dark:text-slate-200'
+                    ? 'border-border-accent bg-accent text-white shadow-sm shadow-accent/10 hover:bg-accent-hover active:bg-accent-active'
+                    : 'border-border hover:bg-bg-elevated text-text-secondary'
                 }`}
               >
                 {d.name}
@@ -169,14 +169,14 @@ export function MonitoringPage() {
             return (
               <Card key={id} className="border-l-4" style={{ borderLeftColor: colors[index].stroke }}>
                 <CardHeader className="p-0 pb-1.5 flex flex-row items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 truncate">{device?.name}</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-text-muted truncate">{device?.name}</span>
                   <div className="h-2 w-2 rounded-full animate-ping" style={{ backgroundColor: colors[index].stroke }} />
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                  <div className="text-3xl font-bold tracking-tight text-text-primary">
                     {stats.current.toFixed(1)}
                   </div>
-                  <div className="mt-2 flex gap-4 text-xs font-bold text-slate-400">
+                  <div className="mt-2 flex gap-4 text-xs font-bold text-text-muted">
                     <span>Min: {stats.min.toFixed(1)}</span>
                     <span>Max: {stats.max.toFixed(1)}</span>
                   </div>
@@ -190,8 +190,8 @@ export function MonitoringPage() {
       {/* Telemetry charts Area */}
       <Card className="p-6">
         {chartData.length === 0 ? (
-          <div className="flex h-72 flex-col items-center justify-center text-slate-400 gap-3">
-            <Layers className="h-10 w-10 text-slate-350" />
+          <div className="flex h-72 flex-col items-center justify-center text-text-muted gap-3">
+            <Layers className="h-10 w-10 text-text-muted" />
             <p className="text-sm font-semibold tracking-wide">Select devices above to visualize live graph feeds.</p>
           </div>
         ) : (
@@ -206,24 +206,24 @@ export function MonitoringPage() {
                     </linearGradient>
                   ))}
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-slate-800" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
                 <XAxis
                   dataKey="timestamp"
-                  tick={{ fontSize: 10, fill: '#64748b', fontWeight: 'bold' }}
+                  tick={{ fontSize: 10, fill: 'var(--color-text-muted)', fontWeight: 'bold' }}
                   tickLine={false}
                   axisLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 10, fill: '#64748b', fontWeight: 'bold' }}
+                  tick={{ fontSize: 10, fill: 'var(--color-text-muted)', fontWeight: 'bold' }}
                   tickLine={false}
                   axisLine={false}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                    border: '1px solid rgba(255,255,255,0.05)',
+                    backgroundColor: 'var(--color-bg-elevated)',
+                    border: '1px solid var(--color-border)',
                     borderRadius: '8px',
-                    color: '#fff',
+                    color: 'var(--color-text-primary)',
                     fontSize: '11px',
                     fontFamily: 'monospace'
                   }}

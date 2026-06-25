@@ -39,22 +39,22 @@ export function SettingsPage() {
   return (
     <div className="space-y-8 select-none animate-in fade-in duration-300 max-w-4xl mx-auto">
       <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Settings</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Manage your system profile, integrations, and mocking parameters.</p>
+        <h1 className="text-3xl font-extrabold tracking-tight text-text-primary">Settings</h1>
+        <p className="text-sm text-text-muted font-medium">Manage your system profile, integrations, and mocking parameters.</p>
       </div>
 
       {/* User profile card */}
       <Card>
-        <CardHeader className="p-0 pb-4 border-b border-slate-100 dark:border-slate-800">
+        <CardHeader className="p-0 pb-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-primary-500" />
+            <User className="h-5 w-5 text-accent" />
             <CardTitle className="text-base font-bold">Profile Settings</CardTitle>
           </div>
-          <CardDescription className="text-xs font-medium text-slate-450 mt-1">Configure your personal credentials and visibility options.</CardDescription>
+          <CardDescription className="text-xs font-medium text-text-muted mt-1">Configure your personal credentials and visibility options.</CardDescription>
         </CardHeader>
         <CardContent className="p-0 mt-6 flex flex-col gap-6 sm:flex-row sm:items-start">
           <div className="flex flex-col items-center gap-3">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-primary-100 text-2xl font-bold text-primary-700 dark:bg-primary-950 dark:text-primary-300 border border-primary-500/10 shadow-inner">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-accent/15 text-2xl font-bold text-accent border border-accent/10 shadow-inner">
               {profile.name.charAt(0).toUpperCase() || 'U'}
             </div>
             <Button variant="outline" size="sm" className="h-8 text-xs">Upload Avatar</Button>
@@ -79,27 +79,27 @@ export function SettingsPage() {
 
       {/* Network simulation mocking */}
       <Card>
-        <CardHeader className="p-0 pb-4 border-b border-slate-100 dark:border-slate-800">
+        <CardHeader className="p-0 pb-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <Settings2 className="h-5 w-5 text-primary-500" />
+            <Settings2 className="h-5 w-5 text-accent" />
             <CardTitle className="text-base font-bold">Simulation Network Mocking</CardTitle>
           </div>
-          <CardDescription className="text-xs font-medium text-slate-450 mt-1">Mock precise network latency and drop rates on telemetry streams.</CardDescription>
+          <CardDescription className="text-xs font-medium text-text-muted mt-1">Mock precise network latency and drop rates on telemetry streams.</CardDescription>
         </CardHeader>
         <CardContent className="p-0 mt-6 space-y-6">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-bold">Network Latency Limits</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Add synthetic response latency on simulated messages.</p>
+                <p className="text-xs text-text-muted font-medium">Add synthetic response latency on simulated messages.</p>
               </div>
               <Switch checked={latencyEnabled} onChange={(v) => setLatencyEnabled(v)} />
             </div>
             {latencyEnabled && (
               <div className="space-y-2.5 pt-2">
-                <div className="flex justify-between text-xs font-bold text-slate-500">
+                <div className="flex justify-between text-xs font-bold text-text-muted">
                   <span>Latency Limit</span>
-                  <span className="font-mono text-primary-600 dark:text-primary-450">{latencyValue[0]}ms</span>
+                  <span className="font-mono text-accent">{latencyValue[0]}ms</span>
                 </div>
                 <Slider
                   min={0}
@@ -113,18 +113,18 @@ export function SettingsPage() {
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-5">
+            <div className="flex items-center justify-between border-t border-border pt-5">
               <div>
                 <p className="text-sm font-bold">Packet Drops Rate</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Simulate random packet drops on the socket connection.</p>
+                <p className="text-xs text-text-muted font-medium">Simulate random packet drops on the socket connection.</p>
               </div>
               <Switch checked={packetDropEnabled} onChange={(v) => setPacketDropEnabled(v)} />
             </div>
             {packetDropEnabled && (
               <div className="space-y-2.5 pt-2">
-                <div className="flex justify-between text-xs font-bold text-slate-500">
+                <div className="flex justify-between text-xs font-bold text-text-muted">
                   <span>Drop Rate</span>
-                  <span className="font-mono text-primary-600 dark:text-primary-450">{packetDropValue[0]}%</span>
+                  <span className="font-mono text-accent">{packetDropValue[0]}%</span>
                 </div>
                 <Slider
                   min={0}
@@ -141,32 +141,32 @@ export function SettingsPage() {
 
       {/* DevOps integrations */}
       <Card>
-        <CardHeader className="p-0 pb-4 border-b border-slate-100 dark:border-slate-800">
+        <CardHeader className="p-0 pb-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <Globe className="h-5 w-5 text-primary-500" />
+            <Globe className="h-5 w-5 text-accent" />
             <CardTitle className="text-base font-bold">DevOps Integrations</CardTitle>
           </div>
-          <CardDescription className="text-xs font-medium text-slate-450 mt-1">Configure target endpoint credentials for telemetry webhooks.</CardDescription>
+          <CardDescription className="text-xs font-medium text-text-muted mt-1">Configure target endpoint credentials for telemetry webhooks.</CardDescription>
         </CardHeader>
         <CardContent className="p-0 mt-6 space-y-4">
           <Input label="MQTT Broker URL" value={mqttUrl} onChange={(e) => setMqttUrl(e.target.value)} />
           <Input label="Webhook Endpoint" value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} />
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">API Access Key</label>
+            <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">API Access Key</label>
             <div className="mt-1.5 flex gap-2">
               <input
                 readOnly
                 value={apiKey}
-                className="h-10 flex-1 rounded-md border border-slate-200 bg-slate-50/50 px-3 font-mono text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                className="h-10 flex-1 rounded-md border border-border bg-bg-primary/50 px-3 font-mono text-xs text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent-subtle/40"
               />
-              <Button variant="outline" size="icon" className="h-10 w-10 border-slate-200" onClick={copyKey} title="Copy Key">
-                <Copy className="h-4 w-4 text-slate-500" />
+              <Button variant="outline" size="icon" className="h-10 w-10 border-border" onClick={copyKey} title="Copy Key">
+                <Copy className="h-4 w-4 text-text-muted" />
               </Button>
-              <Button variant="outline" size="icon" className="h-10 w-10 border-slate-200" onClick={() => setApiKey(generateApiKey())} title="Regenerate Key">
-                <RefreshCw className="h-4 w-4 text-slate-500" />
+              <Button variant="outline" size="icon" className="h-10 w-10 border-border" onClick={() => setApiKey(generateApiKey())} title="Regenerate Key">
+                <RefreshCw className="h-4 w-4 text-text-muted" />
               </Button>
             </div>
-            {copied && <p className="mt-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-450">Copied to clipboard</p>}
+            {copied && <p className="mt-1.5 text-xs font-semibold text-text-secondary">Copied to clipboard</p>}
           </div>
           <Button className="h-10 text-xs">Save Integrations</Button>
         </CardContent>
@@ -174,21 +174,21 @@ export function SettingsPage() {
 
       {/* Appearance card */}
       <Card>
-        <CardHeader className="p-0 pb-4 border-b border-slate-100 dark:border-slate-800">
+        <CardHeader className="p-0 pb-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-primary-500" />
+            <ShieldCheck className="h-5 w-5 text-accent" />
             <CardTitle className="text-base font-bold">System Preferences</CardTitle>
           </div>
-          <CardDescription className="text-xs font-medium text-slate-450 mt-1">Configure layout appearance, dark themes, and default logs output.</CardDescription>
+          <CardDescription className="text-xs font-medium text-text-muted mt-1">Configure layout appearance, dark themes, and default logs output.</CardDescription>
         </CardHeader>
         <CardContent className="p-0 mt-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 text-slate-550 dark:text-slate-400">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border text-text-muted">
               {dark ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
             </div>
             <div>
               <p className="text-sm font-bold">Dark Canvas Theme</p>
-              <p className="text-xs text-slate-555 dark:text-slate-450 font-medium">Toggle between light and dark canvas colors.</p>
+              <p className="text-xs text-text-muted font-medium">Toggle between light and dark canvas colors.</p>
             </div>
           </div>
           <Switch checked={dark} onChange={() => toggleTheme()} />

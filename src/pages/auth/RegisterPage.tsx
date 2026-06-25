@@ -48,14 +48,14 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors items-center justify-center px-6 py-12 select-none">
+    <div className="flex min-h-screen bg-bg-primary text-text-primary transition-colors items-center justify-center px-6 py-12 select-none">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center text-center space-y-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
             <Cpu className="h-5 w-5 text-white" />
           </div>
           <h2 className="text-3xl font-extrabold tracking-tight">Create account</h2>
-          <p className="text-sm text-slate-500 font-medium">
+          <p className="text-sm text-text-muted font-medium">
             Start monitoring and simulating your IoT devices.
           </p>
         </div>
@@ -99,28 +99,28 @@ export function RegisterPage() {
                 type="checkbox"
                 checked={form.terms}
                 onChange={(e) => setForm({ ...form, terms: e.target.checked })}
-                className="mt-0.5 h-4 w-4 rounded border-slate-350 bg-white dark:bg-slate-900 text-primary-600 focus:ring-primary-500"
+                className="mt-0.5 h-4 w-4 rounded border-border bg-bg-surface text-accent focus:ring-accent-subtle/40"
               />
-              <span className="text-xs text-slate-500 font-semibold uppercase tracking-wide">
+              <span className="text-xs text-text-muted font-semibold uppercase tracking-wide">
                 I agree to the{' '}
-                <button type="button" className="text-primary-600 hover:underline dark:text-primary-400">
+                <button type="button" className="text-accent hover:text-accent-hover cursor-pointer">
                   Terms of Service
                 </button>
               </span>
             </label>
-            {errors.terms && <p className="text-[11px] text-red-500 font-medium">{errors.terms}</p>}
+            {errors.terms && <p className="text-[11px] text-status-error font-medium">{errors.terms}</p>}
           </div>
 
-          {apiError && <p className="text-sm font-medium text-red-500">{apiError}</p>}
+          {apiError && <p className="text-sm font-medium text-status-error">{apiError}</p>}
           
           <Button type="submit" className="w-full h-11" loading={loading}>
             Create account
           </Button>
         </form>
 
-        <p className="text-center text-sm text-slate-500 font-medium">
+        <p className="text-center text-sm text-text-muted font-medium">
           Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-primary-600 hover:underline dark:text-primary-400">
+          <Link to="/login" className="font-semibold text-accent hover:text-accent-hover cursor-pointer">
             Sign in
           </Link>
         </p>

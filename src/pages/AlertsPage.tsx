@@ -87,8 +87,8 @@ export function AlertsPage() {
       {/* Header section */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Alerts</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+          <h1 className="text-3xl font-extrabold tracking-tight text-text-primary">Alerts</h1>
+          <p className="text-sm text-text-muted font-medium">
             Review live network events and customize threshold rules.
           </p>
         </div>
@@ -102,22 +102,22 @@ export function AlertsPage() {
         {/* Left column: Alerts feed */}
         <div className="lg:col-span-2 space-y-6">
           <div className="flex items-center gap-2">
-            <ShieldAlert className="h-5 w-5 text-red-500" />
+            <ShieldAlert className="h-5 w-5 text-status-error" />
             <h2 className="text-lg font-bold tracking-tight">Incident Stream</h2>
-            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300">
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-status-error/15 text-status-error">
               {activeAlerts.length} Active
             </span>
           </div>
 
           {loading ? (
-            <p className="text-sm font-medium text-slate-500">Loading alerts feed...</p>
+            <p className="text-sm font-medium text-text-muted">Loading alerts feed...</p>
           ) : alerts.length === 0 ? (
             <Card className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-status-online/15 text-status-online">
                 <CheckCircle className="h-6 w-6" />
               </div>
-              <p className="mt-4 font-bold text-slate-800 dark:text-white">All systems operational</p>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 font-medium">No unresolved alerts registered.</p>
+              <p className="mt-4 font-bold text-text-primary">All systems operational</p>
+              <p className="mt-1 text-sm text-text-muted font-medium">No unresolved alerts registered.</p>
             </Card>
           ) : (
             <div className="space-y-6">
@@ -126,7 +126,7 @@ export function AlertsPage() {
                   <div key={severity} className="space-y-3">
                     <div className="flex items-center gap-2">
                       <StatusPill status={severity} />
-                      <span className="text-xs font-semibold text-slate-450 uppercase">({groupAlerts.length} total)</span>
+                      <span className="text-xs font-semibold text-text-muted uppercase">({groupAlerts.length} total)</span>
                     </div>
                     <div className="space-y-3">
                       {groupAlerts.map((alert) => (
@@ -134,18 +134,18 @@ export function AlertsPage() {
                           key={alert.id}
                           className={cn(
                             'border-l-4 transition-all',
-                            alert.acknowledged ? 'opacity-55 border-l-slate-300' : 'border-l-red-500',
+                            alert.acknowledged ? 'opacity-55 border-l-status-offline' : 'border-l-status-error',
                           )}
                         >
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
-                                <h3 className="font-bold text-slate-900 dark:text-slate-50">{alert.deviceName}</h3>
+                                <h3 className="font-bold text-text-primary">{alert.deviceName}</h3>
                                 <StatusPill status={alert.severity} />
                               </div>
-                              <p className="text-sm font-medium text-slate-650 dark:text-slate-350">{alert.condition}</p>
-                              <div className="flex items-center gap-3 text-xs font-semibold text-slate-400">
-                                <span className="font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">Value: {alert.value}</span>
+                              <p className="text-sm font-medium text-text-secondary">{alert.condition}</p>
+                              <div className="flex items-center gap-3 text-xs font-semibold text-text-muted">
+                                <span className="font-mono bg-bg-elevated px-1.5 py-0.5 rounded">Value: {alert.value}</span>
                                 <span>&bull;</span>
                                 <span>{formatRelativeTime(alert.timestamp)}</span>
                               </div>
@@ -153,7 +153,7 @@ export function AlertsPage() {
                             {!alert.acknowledged && (
                               <Button
                                 variant="outline"
-                                className="h-9 text-xs font-bold border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                className="h-9 text-xs font-bold border-border hover:bg-bg-elevated"
                                 onClick={() => acknowledgeAlert(alert.id)}
                               >
                                 Acknowledge
@@ -175,7 +175,7 @@ export function AlertsPage() {
           {/* Trend analytics chart */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-primary-500" />
+              <BarChart3 className="h-5 w-5 text-accent" />
               <h2 className="text-lg font-bold tracking-tight">Alert Frequencies</h2>
             </div>
             <Card className="p-4">
@@ -184,23 +184,23 @@ export function AlertsPage() {
                   <AreaChart data={alertTrendData}>
                     <defs>
                       <linearGradient id="alertGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.15}/>
-                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0.01}/>
+                        <stop offset="5%" stopColor="#EF4444" stopOpacity={0.15}/>
+                        <stop offset="95%" stopColor="#EF4444" stopOpacity={0.01}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-slate-850" vertical={false} />
-                    <XAxis dataKey="day" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 'bold' }} tickLine={false} axisLine={false} />
-                    <YAxis tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 'bold' }} tickLine={false} axisLine={false} />
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+                    <XAxis dataKey="day" tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 'bold' }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 'bold' }} tickLine={false} axisLine={false} />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                        border: '1px solid rgba(255,255,255,0.05)',
+                        backgroundColor: 'var(--color-bg-elevated)',
+                        border: '1px solid var(--color-border)',
                         borderRadius: '6px',
-                        color: '#fff',
+                        color: 'var(--color-text-primary)',
                         fontSize: '10px'
                       }}
                     />
-                    <Area type="monotone" dataKey="count" stroke="#ef4444" fill="url(#alertGrad)" strokeWidth={1.5} />
+                    <Area type="monotone" dataKey="count" stroke="#EF4444" fill="url(#alertGrad)" strokeWidth={1.5} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -210,7 +210,7 @@ export function AlertsPage() {
           {/* Rules lists */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Settings2 className="h-5 w-5 text-primary-500" />
+              <Settings2 className="h-5 w-5 text-accent" />
               <h2 className="text-lg font-bold tracking-tight">Alert Rules</h2>
             </div>
             <div className="space-y-3">
@@ -218,9 +218,9 @@ export function AlertsPage() {
                 <Card key={rule.id} className="py-4">
                   <div className="flex items-center justify-between gap-4">
                     <div className="space-y-1">
-                      <p className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{rule.deviceName}</p>
-                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                        If <span className="font-mono bg-slate-50 dark:bg-slate-950 px-1 rounded">{rule.metric}</span> {rule.condition} {rule.threshold}
+                      <p className="font-bold text-sm text-text-primary truncate">{rule.deviceName}</p>
+                      <p className="text-xs font-medium text-text-muted">
+                        If <span className="font-mono bg-bg-primary px-1 rounded">{rule.metric}</span> {rule.condition} {rule.threshold}
                       </p>
                     </div>
                     <Switch
@@ -268,7 +268,7 @@ export function AlertsPage() {
             onChange={(e) => setRuleForm({ ...ruleForm, threshold: Number(e.target.value) })}
           />
           <div className="space-y-1.5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Notify via</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Notify via</p>
             <div className="flex gap-2">
               {(['email', 'sms', 'push'] as const).map((ch) => {
                 const active = ruleForm.notifyVia.includes(ch)
@@ -280,8 +280,8 @@ export function AlertsPage() {
                     className={cn(
                       'rounded-md border px-3.5 py-2 text-xs font-bold capitalize transition-all cursor-pointer min-h-[38px] flex-1',
                       active
-                        ? 'border-primary-500 bg-primary-600 text-white'
-                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 dark:text-slate-200'
+                        ? 'border-border-accent bg-accent text-white hover:bg-accent-hover active:bg-accent-active'
+                        : 'border-border hover:bg-bg-elevated text-text-secondary'
                     )}
                   >
                     {ch}
