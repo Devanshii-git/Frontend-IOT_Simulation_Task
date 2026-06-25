@@ -1,6 +1,5 @@
-# frontend-ci.yml
-# Azure Pipeline CI Skeleton for React/Vite (Frontend)
-# Place this file in the root of your frontend GitHub repository
+# azure-pipelines.yml (Frontend - React/Vite)
+# Sprint 1: Full Build & Validation Pipeline
 
 trigger:
   branches:
@@ -21,22 +20,29 @@ steps:
   displayName: 'Install Node.js'
 
 - script: |
-    # npm ci
-    echo "NPM modules installed (Skeleton)"
-  displayName: 'Install dependencies'
+    npm ci
+  displayName: 'Install NPM Dependencies (npm ci for clean install)'
 
 - script: |
-    # npm run lint
-    echo "Linting passed (Skeleton)"
-  displayName: 'Run Linting'
+    npm run lint
+  displayName: 'Run ESLint Code Quality Check'
+  continueOnError: false
 
 - script: |
-    # npm run test
-    echo "Tests passed (Skeleton)"
-  displayName: 'Run Unit Tests'
+    # Assuming Vite uses Vitest or Jest. Update the package.json test script to output JUnit if needed.
+    npm run test --if-present
+  displayName: 'Run Frontend Unit Tests'
+  continueOnError: false
 
 - script: |
-    # npm run build
-    echo "Build successful (Skeleton)"
-  displayName: 'Build Frontend Application'
+    npm run build
+  displayName: 'Build Vite Production Bundle'
+  continueOnError: false
+
+- task: PublishPipelineArtifact@1
+  inputs:
+    targetPath: 'dist' # Vite outputs to 'dist' by default
+    artifact: 'frontend-build'
+    publishLocation: 'pipeline'
+  displayName: 'Publish Build Artifact (dist folder)'
 
