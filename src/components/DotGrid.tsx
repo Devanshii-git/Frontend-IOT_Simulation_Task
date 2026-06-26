@@ -25,9 +25,9 @@ export function DotGrid({
   dotSpacing = 28,
   dotRadius = 2,
   repulsionRadius = 100,
-  repulsionStrength = 40,
+  repulsionStrength = 20,
   lerpFactor = 0.08,
-  opacity = 0.5,
+  opacity = 0.25,
 }: DotGridProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
