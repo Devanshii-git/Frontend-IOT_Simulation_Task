@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { Cpu, Globe } from 'lucide-react'
+import { DotGrid } from '@/components/DotGrid'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useAuthStore } from '@/store/authStore'
@@ -46,34 +47,16 @@ export function LoginPage() {
     <div className="flex min-h-screen bg-bg-primary text-text-primary transition-colors select-none">
       {/* Left Decoration Panel */}
       <div className="relative hidden lg:flex lg:w-1/2 flex-col justify-between bg-bg-primary p-12 overflow-hidden border-r border-border">
-        {/* Animated Grid & Topology lines */}
-        <svg className="absolute inset-0 h-full w-full opacity-20" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255, 255, 255, 0.05)" strokeWidth="1" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-          <line x1="15%" y1="25%" x2="45%" y2="50%" stroke="rgba(13, 148, 136, 0.4)" strokeWidth="1.5" />
-          <line x1="45%" y1="50%" x2="80%" y2="35%" stroke="rgba(13, 148, 136, 0.4)" strokeWidth="1.5" />
-          <line x1="45%" y1="50%" x2="65%" y2="75%" stroke="rgba(13, 148, 136, 0.4)" strokeWidth="1.5" />
-          <line x1="15%" y1="25%" x2="35%" y2="70%" stroke="rgba(13, 148, 136, 0.2)" strokeWidth="1" />
-          
-          <circle cx="15%" cy="25%" r="6" fill="#0D9488" className="animate-pulse" />
-          <circle cx="45%" cy="50%" r="8" fill="#0D9488" />
-          <circle cx="80%" cy="35%" r="5" fill="#0D9488" />
-          <circle cx="65%" cy="75%" r="7" fill="#0D9488" />
-          <circle cx="35%" cy="70%" r="5" fill="#F59E0B" className="animate-pulse" />
-        </svg>
+        <DotGrid />
 
-        <div className="relative z-10 flex items-center gap-3">
+        <div className="relative z-[2] flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
             <Cpu className="h-5 w-5 text-white" />
           </div>
-          <span className="font-bold tracking-tight text-xl text-text-primary">AlignAV</span>
+          <span className="font-bold tracking-tight text-xl text-text-primary bg-bg-primary p-2 rounded-xl">AlignAV</span>
         </div>
 
-        <div className="relative z-10 space-y-4 max-w-lg">
+        <div className="relative z-[2] space-y-4 max-w-lg bg-bg-primary p-3 rounded-xl">
           <h2 className="text-4xl font-extrabold text-text-primary tracking-tight leading-tight">
             Comprehensive IoT Device Simulation
           </h2>
@@ -82,7 +65,7 @@ export function LoginPage() {
           </p>
         </div>
 
-        <div className="relative z-10 text-xs text-text-muted font-medium">
+        <div className="relative z-[2] text-xs text-text-muted font-medium">
           AlignAV &copy; 2026. All rights reserved.
         </div>
       </div>

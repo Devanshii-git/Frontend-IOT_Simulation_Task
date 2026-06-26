@@ -52,7 +52,12 @@
 }
 
 @layer base {
+  :root {
+    --color-dot: #111111;
+  }
+
   .dark {
+    --color-dot: #FFFFFF;
     --color-bg-primary: #202020;
     --color-bg-surface: #2A2A2A;
     --color-bg-elevated: #333333;
