@@ -69,7 +69,7 @@ export function DevicesPage() {
             options={[{ value: 'all', label: 'All Types' }, ...deviceTypeOptions]}
             value={filters.type}
             onChange={(e) => setFilters({ type: e.target.value as DeviceType | 'all' })}
-            className="w-36 h-10"
+            className="w-full h-10"
           />
           <Select
             options={[
@@ -80,13 +80,13 @@ export function DevicesPage() {
             ]}
             value={filters.status}
             onChange={(e) => setFilters({ status: e.target.value as typeof filters.status })}
-            className="w-32 h-10"
+            className="w-full h-10"
           />
           <Select
             options={[{ value: '', label: 'All Locations' }, ...locations.map((l) => ({ value: l, label: l }))]}
             value={filters.location}
             onChange={(e) => setFilters({ location: e.target.value })}
-            className="w-36 h-10"
+            className="w-full h-10"
           />
           <div className="flex gap-1 border border-border rounded-md p-1 bg-bg-primary h-10">
             <Button variant={view === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 min-h-[32px] min-w-[32px]" onClick={() => setView('grid')}>
