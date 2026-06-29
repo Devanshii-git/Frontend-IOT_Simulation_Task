@@ -1,170 +1,315 @@
-import { useEffect } from 'react'
-import { Play, Square, Zap, AlertTriangle, Wifi, TrendingUp, Cpu } from 'lucide-react'
-import { AreaChart, Area, ResponsiveContainer } from 'recharts'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Select } from '@/components/ui/Select'
-import { Input } from '@/components/ui/Input'
-import { useSimulationStore } from '@/store/simulationStore'
-import { generateWaveValue } from '@/utils/waveforms'
-import type { SimulationPreset, WaveformType } from '@/types'
+import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
+import { TELEMETRY_BASE_URL } from '@/config/api'
+import { useDeviceStore } from '@/store/deviceStore'
+import {
+  SIMULATOR_DEVICE_TYPE_LABELS,
+  formatSimulatorTimestamp,
+  getPrimaryMetricKey,
+} from '@/utils/simulatorDevices'
+import type { LatestTelemetry, SimulatorDeviceType } from '@/types'
 import { cn } from '@/utils/cn'
 
-const waveformOptions = [
-  { value: 'sine', label: 'Sine Wave' },
-  { value: 'random', label: 'Random' },
-  { value: 'spike', label: 'Spike' },
-  { value: 'flatline', label: 'Flatline' },
+type TimeRange = '-30m' | '-1h' | '-24h'
+
+interface HistoryPoint {
+  timestamp: string
+  temperature?: number
+  battery?: number
+  volume?: number
+  brightness?: number
+  fps?: number
+  chartTimestamp?: string
+}
+
+const TIME_RANGES: { label: string; value: TimeRange }[] = [
+  { label: 'Last 30 min', value: '-30m' },
+  { label: 'Last 1 hour', value: '-1h' },
+  { label: 'Last 24 hours', value: '-24h' },
 ]
 
-const presets: { id: SimulationPreset; label: string; desc: string; icon: typeof Zap }[] = [
-  { id: 'normal', label: 'Normal Operation', desc: 'Stable sine waves', icon: TrendingUp },
-  { id: 'sensor-fault', label: 'Sensor Fault', desc: 'Flatlines & NaN errors', icon: AlertTriangle },
-  { id: 'network-degradation', label: 'Network Degradation', desc: 'Delayed, dropped packets', icon: Wifi },
-  { id: 'overload-spike', label: 'Overload Spike', desc: 'Out-of-bounds spikes', icon: Zap },
-]
+function getMetricLabel(key: string): string {
+  switch (key) {
+    case 'temperature':
+      return 'Temperature (°C)'
+    case 'volume':
+      return 'Volume'
+    case 'fps':
+      return 'FPS'
+    case 'brightness':
+      return 'Brightness'
+    case 'battery':
+      return 'Battery (%)'
+    default:
+      return key
+  }
+}
+
+function formatChartTimestamp(ts: string): string {
+  try {
+    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  } catch {
+    return ts
+  }
+}
+
+function DeviceMetrics({ deviceType, telemetry }: {
+  deviceType: SimulatorDeviceType
+  telemetry: LatestTelemetry
+}) {
+  return (
+    <div className="mt-4 space-y-1.5 text-sm">
+      {deviceType === 'temperature_sensor' && (
+        <>
+          {telemetry.temperature != null && (
+            <p><span className="text-text-muted">Temperature:</span> <span className="font-semibold">{telemetry.temperature}°C</span></p>
+          )}
+          {telemetry.battery != null && (
+            <p><span className="text-text-muted">Battery:</span> <span className="font-semibold">{telemetry.battery}%</span></p>
+          )}
+        </>
+      )}
+      {deviceType === 'speaker' && (
+        <>
+          {telemetry.volume != null && (
+            <p><span className="text-text-muted">Volume:</span> <span className="font-semibold">{telemetry.volume}</span></p>
+          )}
+          {telemetry.battery != null && (
+            <p><span className="text-text-muted">Battery:</span> <span className="font-semibold">{telemetry.battery}%</span></p>
+          )}
+        </>
+      )}
+      {deviceType === 'camera' && (
+        <>
+          {telemetry.fps != null && (
+            <p><span className="text-text-muted">FPS:</span> <span className="font-semibold">{telemetry.fps}</span></p>
+          )}
+          {telemetry.battery != null && (
+            <p><span className="text-text-muted">Battery:</span> <span className="font-semibold">{telemetry.battery}%</span></p>
+          )}
+        </>
+      )}
+      {deviceType === 'microphone' && telemetry.battery != null && (
+        <p><span className="text-text-muted">Battery:</span> <span className="font-semibold">{telemetry.battery}%</span></p>
+      )}
+      {deviceType === 'projector' && (
+        <>
+          {telemetry.brightness != null && (
+            <p><span className="text-text-muted">Brightness:</span> <span className="font-semibold">{telemetry.brightness}</span></p>
+          )}
+          {telemetry.battery != null && (
+            <p><span className="text-text-muted">Battery:</span> <span className="font-semibold">{telemetry.battery}%</span></p>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
 
 export function SimulationPage() {
-  const { config, tick, log, setConfig, applyPreset, start, stop } = useSimulationStore()
+  const runningDevices = useDeviceStore((s) => s.runningDevices)
+  const telemetry = useDeviceStore((s) => s.telemetry)
+  const refreshAll = useDeviceStore((s) => s.refreshAll)
+  const stopSimulation = useDeviceStore((s) => s.stopSimulation)
+
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
+  const [timeRange, setTimeRange] = useState<TimeRange>('-30m')
+  const [historyData, setHistoryData] = useState<HistoryPoint[]>([])
+  const [runningError, setRunningError] = useState('')
+  const [historyError, setHistoryError] = useState('')
+  const [stopError, setStopError] = useState('')
+  const [stoppingId, setStoppingId] = useState<string | null>(null)
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   useEffect(() => {
-    if (!config.running) start()
-  }, [config.running, start])
+    const load = async () => {
+      try {
+        await refreshAll()
+        setRunningError('')
+      } catch (err) {
+        setRunningError(err instanceof Error ? err.message : 'Failed to load running simulations')
+      }
+    }
+    load()
+    const interval = setInterval(load, 10000)
+    return () => clearInterval(interval)
+  }, [refreshAll])
 
-  const previewData = Array.from({ length: 30 }, (_, i) => ({
-    t: i,
-    v: generateWaveValue(config.waveform, tick - 30 + i, config.min, config.max, config.preset),
-  })).filter((d) => !isNaN(d.v))
+  const fetchHistory = useCallback(async (deviceId: string, range: TimeRange) => {
+    setHistoryLoading(true)
+    try {
+      const res = await fetch(`${TELEMETRY_BASE_URL}/telemetry/${deviceId}?time_range=${range}`)
+      if (!res.ok) throw new Error('Failed to fetch telemetry history')
+      const data = await res.json()
+      const points: HistoryPoint[] = Array.isArray(data) ? data : (data.data ?? [])
+      setHistoryData(points.map((p) => ({ ...p, chartTimestamp: formatChartTimestamp(p.timestamp) })))
+      setHistoryError('')
+    } catch (err) {
+      setHistoryError(err instanceof Error ? err.message : 'Failed to load telemetry history')
+      setHistoryData([])
+    } finally {
+      setHistoryLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!selectedDeviceId) {
+      setHistoryData([])
+      return
+    }
+    fetchHistory(selectedDeviceId, timeRange)
+  }, [selectedDeviceId, timeRange, fetchHistory])
+
+  const handleStop = async (deviceId: string) => {
+    setStopError('')
+    setStoppingId(deviceId)
+    try {
+      await stopSimulation(deviceId)
+      if (selectedDeviceId === deviceId) setSelectedDeviceId(null)
+    } catch (err) {
+      setStopError(err instanceof Error ? err.message : 'Failed to stop simulation')
+    } finally {
+      setStoppingId(null)
+    }
+  }
+
+  const selectedTelemetry = selectedDeviceId ? telemetry[selectedDeviceId] : null
+  const primaryMetricKey = selectedTelemetry
+    ? getPrimaryMetricKey(selectedTelemetry.device_type)
+    : null
 
   return (
     <div className="space-y-6 select-none animate-in fade-in duration-300">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-extrabold tracking-tight text-text-primary">Simulation</h1>
-          <p className="text-sm text-text-muted font-medium">Configure global mock telemetry generators and preset scenarios.</p>
-        </div>
-        <div className="flex gap-2">
-          {config.running ? (
-            <Button variant="danger" className="h-10 text-xs font-bold" onClick={stop}>
-              <Square className="h-4 w-4" /> Stop Simulation
-            </Button>
-          ) : (
-            <Button className="h-10 text-xs font-bold animate-pulse" onClick={start}>
-              <Play className="h-4 w-4" /> Start Simulation
-            </Button>
-          )}
-        </div>
+      <div className="flex flex-col gap-1">
+        <h1 className="text-3xl font-extrabold tracking-tight text-text-primary">Simulation Dashboard</h1>
+        <p className="text-sm text-text-muted font-medium">Monitor running device simulations and live telemetry.</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Simulation configuration parameters */}
-        <Card>
-          <CardHeader className="p-0 pb-4 border-b border-border">
-            <div className="flex items-center gap-2">
-              <Cpu className="h-5 w-5 text-accent" />
-              <CardTitle className="text-base font-bold">Control Board</CardTitle>
-            </div>
-            <CardDescription className="text-xs font-medium text-text-muted mt-1">Adjust waveform mathematical models and intervals.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0 mt-6 space-y-4">
-            <Select
-              label="Waveform Type"
-              options={waveformOptions}
-              value={config.waveform}
-              onChange={(e) => setConfig({ waveform: e.target.value as WaveformType })}
-            />
-            <Input
-              label="Update Frequency (ms)"
-              type="number"
-              min={100}
-              step={100}
-              value={config.frequencyMs}
-              onChange={(e) => setConfig({ frequencyMs: Number(e.target.value) })}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <Input label="Min Value Limit" type="number" value={config.min} onChange={(e) => setConfig({ min: Number(e.target.value) })} />
-              <Input label="Max Value Limit" type="number" value={config.max} onChange={(e) => setConfig({ max: Number(e.target.value) })} />
-            </div>
-          </CardContent>
-        </Card>
+      {runningError && (
+        <div className="rounded-lg bg-red-100 px-4 py-3 text-sm text-red-800 border border-red-200">{runningError}</div>
+      )}
+      {stopError && (
+        <div className="rounded-lg bg-red-100 px-4 py-3 text-sm text-red-800 border border-red-200">{stopError}</div>
+      )}
 
-        {/* Live Sparkline Preview */}
-        <Card className="flex flex-col justify-between">
-          <CardHeader className="p-0 pb-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">Live Preview Sparkline</span>
-              <span className="font-mono text-[10px] bg-bg-elevated text-text-muted px-2 py-0.5 rounded font-semibold">Tick: {tick}</span>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0 flex-1 flex items-center justify-center pt-4 min-h-[160px]">
-            {previewData.length === 0 ? (
-              <p className="text-sm text-text-muted font-medium">Waiting for simulation data...</p>
-            ) : (
-              <div className="h-36 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={previewData}>
-                    <defs>
-                      <linearGradient id="previewGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#0D9488" stopOpacity={0.15}/>
-                        <stop offset="95%" stopColor="#0D9488" stopOpacity={0.01}/>
-                      </linearGradient>
-                    </defs>
-                    <Area type="monotone" dataKey="v" stroke="#0D9488" fill="url(#previewGrad)" strokeWidth={2} activeDot={false} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {runningDevices.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl bg-white p-12 shadow text-center">
+          <p className="text-text-muted font-medium">
+            No devices running. Go to{' '}
+            <Link to="/devices?add=true" className="text-accent font-semibold hover:underline">Add Device</Link>{' '}
+            to start a simulation.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {runningDevices.map((deviceId) => {
+            const tel = telemetry[deviceId]
+            const deviceType = tel?.device_type
+            const isSelected = selectedDeviceId === deviceId
 
-      {/* Global presets */}
-      <div className="space-y-3">
-        <h2 className="text-lg font-bold tracking-tight">System Global Presets</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {presets.map(({ id, label, desc, icon: Icon }) => {
-            const active = config.preset === id
             return (
-              <Card
-                key={id}
-                interactive
-                onClick={() => applyPreset(id)}
-                className={cn(
-                  'transition-all',
-                  active && 'border-border-accent bg-accent/10'
-                )}
+              <div
+                key={deviceId}
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelectedDeviceId(deviceId)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedDeviceId(deviceId) }}
+                className={cn('rounded-xl bg-white p-5 shadow cursor-pointer transition-all', isSelected && 'ring-2 ring-accent')}
               >
-                <CardHeader className="p-0 pb-2">
-                  <div className={cn('flex h-9 w-9 items-center justify-center rounded-lg border', active ? 'border-accent/25 text-accent bg-accent/10' : 'border-border text-text-muted')}>
-                    <Icon className="h-4.5 w-4.5" />
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Device ID</p>
+                    <p className="font-bold text-text-primary mt-0.5">{deviceId}</p>
                   </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <p className="font-bold text-sm text-text-primary">{label}</p>
-                  <p className="text-xs text-text-muted font-medium mt-1 leading-relaxed">{desc}</p>
-                </CardContent>
-              </Card>
+                  {deviceType && (
+                    <span className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent shrink-0">
+                      {SIMULATOR_DEVICE_TYPE_LABELS[deviceType]}
+                    </span>
+                  )}
+                </div>
+                {tel?.timestamp && (
+                  <p className="mt-3 text-xs text-text-muted">{formatSimulatorTimestamp(tel.timestamp)}</p>
+                )}
+                {deviceType && tel && <DeviceMetrics deviceType={deviceType} telemetry={tel} />}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleStop(deviceId) }}
+                  disabled={stoppingId === deviceId}
+                  className="mt-4 w-full rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50 transition-colors"
+                >
+                  {stoppingId === deviceId ? (
+                    <span className="inline-flex items-center justify-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      Stopping…
+                    </span>
+                  ) : 'Stop'}
+                </button>
+              </div>
             )
           })}
         </div>
-      </div>
+      )}
 
-      {/* Simulation Console Log */}
-      <Card>
-        <CardHeader className="p-0 pb-3.5 flex flex-row items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">Live Console Feed</span>
-          <div className="h-2 w-2 rounded-full bg-status-online animate-ping" />
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="max-h-64 overflow-y-auto rounded-lg bg-bg-primary border border-border p-4 font-mono text-xs text-text-secondary select-text scrollbar-thin shadow-inner space-y-1">
-            {log.length === 0 ? (
-              <p className="text-text-muted font-medium">Waiting for console stream telemetry...</p>
-            ) : (
-              log.map((entry, i) => <div key={i} className="py-0.5 tracking-wide leading-relaxed">&gt; {entry}</div>)
-            )}
+      {selectedDeviceId && (
+        <div className="rounded-xl bg-white p-6 shadow space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-lg font-bold text-text-primary">Telemetry — {selectedDeviceId}</h2>
+            <div className="flex flex-wrap gap-2">
+              {TIME_RANGES.map(({ label, value }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setTimeRange(value)}
+                  className={cn(
+                    'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors',
+                    timeRange === value ? 'bg-accent text-white' : 'bg-bg-elevated text-text-muted hover:text-text-primary',
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-        </CardContent>
-      </Card>
+          {historyError && (
+            <div className="rounded-lg bg-red-100 px-4 py-3 text-sm text-red-800 border border-red-200">{historyError}</div>
+          )}
+          {historyLoading ? (
+            <div className="flex h-64 items-center justify-center text-sm text-text-muted">Loading chart…</div>
+          ) : historyData.length === 0 ? (
+            <div className="flex h-64 items-center justify-center text-sm text-text-muted">No telemetry data for this time range.</div>
+          ) : primaryMetricKey ? (
+            <div className="h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={historyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="chartTimestamp" tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    stroke="#9ca3af"
+                    label={{ value: getMetricLabel(primaryMetricKey), angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: '#6b7280' } }}
+                  />
+                  <Tooltip
+                    labelFormatter={(_, payload) => {
+                      const ts = payload?.[0]?.payload?.timestamp
+                      return ts ? formatSimulatorTimestamp(String(ts)) : ''
+                    }}
+                  />
+                  <Line type="monotone" dataKey={primaryMetricKey} stroke="#0D9488" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : null}
+        </div>
+      )}
     </div>
   )
 }

@@ -1,3 +1,21 @@
+export type SimulatorDeviceType =
+  | 'temperature_sensor'
+  | 'speaker'
+  | 'camera'
+  | 'microphone'
+  | 'projector'
+
+export interface LatestTelemetry {
+  device_id: string
+  device_type: SimulatorDeviceType
+  temperature?: number
+  battery?: number
+  volume?: number
+  brightness?: number
+  fps?: number
+  timestamp: string
+}
+
 export type DeviceType =
   | 'temperature'
   | 'humidity'

@@ -7,10 +7,9 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Select'
 import { useDeviceStore } from '@/store/deviceStore'
-import { useSimulationStore } from '@/store/simulationStore'
-import { telemetryWs } from '@/services/websocket'
+import { getPrimaryMetricKey } from '@/utils/simulatorDevices'
 import { exportToCSV, exportToJSON } from '@/utils/export'
-import type { TelemetryPoint } from '@/types'
+import type { SimulatorDeviceType } from '@/types'
 
 const REFRESH_OPTIONS = [
   { value: '5000', label: '5 seconds' },
@@ -19,39 +18,37 @@ const REFRESH_OPTIONS = [
   { value: 'manual', label: 'Manual' },
 ]
 
+function getMetricValue(
+  deviceType: SimulatorDeviceType,
+  telemetry: { temperature?: number; battery?: number; volume?: number; brightness?: number; fps?: number },
+): number | null {
+  const key = getPrimaryMetricKey(deviceType)
+  const value = telemetry[key as keyof typeof telemetry]
+  return typeof value === 'number' ? value : null
+}
+
 export function MonitoringPage() {
-  const { devices, fetchDevices } = useDeviceStore()
-  const { start, config, telemetryBuffers } = useSimulationStore()
+  const runningDevices = useDeviceStore((s) => s.runningDevices)
+  const telemetry = useDeviceStore((s) => s.telemetry)
+  const refreshAll = useDeviceStore((s) => s.refreshAll)
   const [selectedDevices, setSelectedDevices] = useState<string[]>([])
   const [refreshInterval, setRefreshInterval] = useState('10000')
-  const [dateRange, setDateRange] = useState({ start: '', end: '' })
-  const [liveData, setLiveData] = useState<Record<string, TelemetryPoint[]>>({})
+  const [fetchError, setFetchError] = useState('')
 
   useEffect(() => {
-    fetchDevices()
-    if (!config.running) start()
-  }, [fetchDevices, start, config.running])
-
-  useEffect(() => {
-    telemetryWs.connect()
-    const unsubs: (() => void)[] = []
-    selectedDevices.forEach((id) => {
-      telemetryWs.send({ action: 'subscribe', deviceId: id })
-      const unsub = telemetryWs.onMessage(id, (data) => {
-        setLiveData((prev) => {
-          const buf = [...(prev[id] ?? []), { timestamp: data.timestamp, value: data.value }].slice(-35)
-          return { ...prev, [id]: buf }
-        })
-      })
-      unsubs.push(unsub)
-    })
-    return () => {
-      selectedDevices.forEach((id) => telemetryWs.send({ action: 'unsubscribe', deviceId: id }))
-      unsubs.forEach((u) => u())
+    const load = async () => {
+      try {
+        await refreshAll()
+        setFetchError('')
+      } catch (err) {
+        setFetchError(err instanceof Error ? err.message : 'Failed to load telemetry')
+      }
     }
-  }, [selectedDevices])
-
-  const onlineDevices = devices.filter((d) => d.status !== 'offline')
+    load()
+    if (refreshInterval === 'manual') return
+    const poll = setInterval(load, Number(refreshInterval))
+    return () => clearInterval(poll)
+  }, [refreshAll, refreshInterval])
 
   const toggleDevice = (id: string) => {
     setSelectedDevices((prev) => {
@@ -62,21 +59,17 @@ export function MonitoringPage() {
   }
 
   const chartData = useMemo(() => {
-    if (selectedDevices.length === 0) return []
-    const allPoints = selectedDevices.flatMap((id) => {
-      const buf = liveData[id]?.length ? liveData[id] : telemetryBuffers[id] ?? []
-      return buf.map((p) => ({ ...p, deviceId: id }))
+    return selectedDevices.map((id) => {
+      const tel = telemetry[id]
+      const value = tel?.device_type ? getMetricValue(tel.device_type, tel) : null
+      return {
+        timestamp: tel?.timestamp
+          ? new Date(tel.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+          : id,
+        [id]: value ?? 0,
+      }
     })
-    const timestamps = [...new Set(allPoints.map((p) => p.timestamp))].sort()
-    return timestamps.map((ts) => {
-      const point: Record<string, string | number> = { timestamp: new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }
-      selectedDevices.forEach((id) => {
-        const match = allPoints.find((p) => p.timestamp === ts && (p as { deviceId: string }).deviceId === id)
-        if (match) point[id] = match.value
-      })
-      return point
-    })
-  }, [selectedDevices, liveData, telemetryBuffers])
+  }, [selectedDevices, telemetry])
 
   const colors = [
     { stroke: '#0D9488', fill: 'rgba(13, 148, 136, 0.05)' },
@@ -85,20 +78,32 @@ export function MonitoringPage() {
   ]
 
   const getStats = (deviceId: string) => {
-    const data = liveData[deviceId] ?? telemetryBuffers[deviceId] ?? []
-    if (!data.length) return { current: 0, min: 0, max: 0 }
-    const values = data.map((d) => d.value).filter((v) => !isNaN(v))
-    return {
-      current: values[values.length - 1] ?? 0,
-      min: Math.min(...values),
-      max: Math.max(...values),
-    }
+    const tel = telemetry[deviceId]
+    if (!tel?.device_type) return { current: 0 }
+    const current = getMetricValue(tel.device_type, tel) ?? 0
+    return { current }
   }
 
   const handleExport = (format: 'csv' | 'json') => {
-    const data = selectedDevices.flatMap((id) => liveData[id] ?? telemetryBuffers[id] ?? [])
+    const data = selectedDevices
+      .map((id) => telemetry[id])
+      .filter(Boolean)
+      .map((tel) => ({
+        timestamp: tel!.timestamp,
+        device_id: tel!.device_id,
+        value: tel!.device_type ? (getMetricValue(tel!.device_type, tel!) ?? 0) : 0,
+      }))
     if (format === 'csv') exportToCSV(data, 'telemetry-export')
     else exportToJSON(data, 'telemetry-export')
+  }
+
+  const handleManualRefresh = async () => {
+    try {
+      await refreshAll()
+      setFetchError('')
+    } catch (err) {
+      setFetchError(err instanceof Error ? err.message : 'Failed to refresh telemetry')
+    }
   }
 
   return (
@@ -110,19 +115,7 @@ export function MonitoringPage() {
         </div>
         <div className="flex flex-wrap gap-2 items-center">
           <Select options={REFRESH_OPTIONS} value={refreshInterval} onChange={(e) => setRefreshInterval(e.target.value)} className="w-36 h-10" />
-          <input
-            type="date"
-            value={dateRange.start}
-            onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-            className="h-10 rounded-md border border-border px-3 text-xs font-semibold uppercase tracking-wider bg-bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-subtle/40 focus:border-border-accent"
-          />
-          <input
-            type="date"
-            value={dateRange.end}
-            onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-            className="h-10 rounded-md border border-border px-3 text-xs font-semibold uppercase tracking-wider bg-bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-subtle/40 focus:border-border-accent"
-          />
-          <Button variant="outline" size="icon" className="h-10 w-10">
+          <Button variant="outline" size="icon" className="h-10 w-10" onClick={handleManualRefresh}>
             <RefreshCw className="h-4 w-4" />
           </Button>
           <Button variant="outline" className="h-10 text-xs" onClick={() => handleExport('csv')}>
@@ -134,51 +127,54 @@ export function MonitoringPage() {
         </div>
       </div>
 
-      {/* Select Overlay sensors card */}
+      {fetchError && (
+        <div className="rounded-lg bg-red-100 px-4 py-3 text-sm text-red-800 border border-red-200">
+          {fetchError}
+        </div>
+      )}
+
       <Card>
         <CardHeader className="p-0">
           <CardTitle className="text-sm font-semibold uppercase tracking-wider text-text-muted">Overlay Telemetry Channels</CardTitle>
-          <CardDescription className="text-xs font-medium text-text-muted mt-1">Select up to 3 active devices to overlay on the graph below.</CardDescription>
+          <CardDescription className="text-xs font-medium text-text-muted mt-1">Select up to 3 running devices to overlay on the graph below.</CardDescription>
         </CardHeader>
         <CardContent className="p-0 mt-4 flex flex-wrap gap-2">
-          {onlineDevices.map((d) => {
-            const selected = selectedDevices.includes(d.id)
-            return (
-              <button
-                key={d.id}
-                onClick={() => toggleDevice(d.id)}
-                className={`rounded-lg border px-3.5 py-2 text-xs font-bold transition-all cursor-pointer min-h-[38px] ${
-                  selected
-                    ? 'border-border-accent bg-accent text-white shadow-sm shadow-accent/10 hover:bg-accent-hover active:bg-accent-active'
-                    : 'border-border hover:bg-bg-elevated text-text-secondary'
-                }`}
-              >
-                {d.name}
-              </button>
-            )
-          })}
+          {runningDevices.length === 0 ? (
+            <p className="text-sm text-text-muted font-medium">No running devices available.</p>
+          ) : (
+            runningDevices.map((id) => {
+              const selected = selectedDevices.includes(id)
+              return (
+                <button
+                  key={id}
+                  onClick={() => toggleDevice(id)}
+                  className={`rounded-lg border px-3.5 py-2 text-xs font-bold transition-all cursor-pointer min-h-[38px] ${
+                    selected
+                      ? 'border-border-accent bg-accent text-white shadow-sm shadow-accent/10 hover:bg-accent-hover active:bg-accent-active'
+                      : 'border-border hover:bg-bg-elevated text-text-secondary'
+                  }`}
+                >
+                  {id}
+                </button>
+              )
+            })
+          )}
         </CardContent>
       </Card>
 
-      {/* Device statistics cards */}
       {selectedDevices.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {selectedDevices.map((id, index) => {
-            const device = devices.find((d) => d.id === id)
             const stats = getStats(id)
             return (
               <Card key={id} className="border-l-4" style={{ borderLeftColor: colors[index].stroke }}>
                 <CardHeader className="p-0 pb-1.5 flex flex-row items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-text-muted truncate">{device?.name}</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-text-muted truncate">{id}</span>
                   <div className="h-2 w-2 rounded-full animate-ping" style={{ backgroundColor: colors[index].stroke }} />
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="text-3xl font-bold tracking-tight text-text-primary">
                     {stats.current.toFixed(1)}
-                  </div>
-                  <div className="mt-2 flex gap-4 text-xs font-bold text-text-muted">
-                    <span>Min: {stats.min.toFixed(1)}</span>
-                    <span>Max: {stats.max.toFixed(1)}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -187,9 +183,8 @@ export function MonitoringPage() {
         </div>
       )}
 
-      {/* Telemetry charts Area */}
       <Card className="p-6">
-        {chartData.length === 0 ? (
+        {selectedDevices.length === 0 ? (
           <div className="flex h-72 flex-col items-center justify-center text-text-muted gap-3">
             <Layers className="h-10 w-10 text-text-muted" />
             <p className="text-sm font-semibold tracking-wide">Select devices above to visualize live graph feeds.</p>
@@ -225,25 +220,22 @@ export function MonitoringPage() {
                     borderRadius: '8px',
                     color: 'var(--color-text-primary)',
                     fontSize: '11px',
-                    fontFamily: 'monospace'
+                    fontFamily: 'monospace',
                   }}
                 />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'bold', marginTop: '10px' }} />
-                {selectedDevices.map((id, i) => {
-                  const device = devices.find((d) => d.id === id)
-                  return (
-                    <Area
-                      key={id}
-                      type="monotone"
-                      dataKey={id}
-                      name={device?.name}
-                      stroke={colors[i].stroke}
-                      fill={`url(#grad-${id})`}
-                      strokeWidth={2}
-                      activeDot={{ r: 4 }}
-                    />
-                  )
-                })}
+                {selectedDevices.map((id, i) => (
+                  <Area
+                    key={id}
+                    type="monotone"
+                    dataKey={id}
+                    name={id}
+                    stroke={colors[i].stroke}
+                    fill={`url(#grad-${id})`}
+                    strokeWidth={2}
+                    activeDot={{ r: 4 }}
+                  />
+                ))}
               </AreaChart>
             </ResponsiveContainer>
           </div>

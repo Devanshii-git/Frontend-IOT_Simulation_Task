@@ -1,57 +1,46 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Cpu, Wifi, WifiOff, Bell, Activity } from 'lucide-react'
+import { Plus, Cpu, Bell } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@/components/ui/Card'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useDeviceStore } from '@/store/deviceStore'
 import { useAlertStore } from '@/store/alertStore'
-import { getActivitiesApi } from '@/services/api'
-import { deviceTypeConfig } from '@/utils/deviceIcons'
-import { formatRelativeTime } from '@/utils/format'
-import type { ActivityItem, DeviceStatus } from '@/types'
+import { SIMULATOR_DEVICE_TYPE_LABELS } from '@/utils/simulatorDevices'
+import type { SimulatorDeviceType } from '@/types'
 import { cn } from '@/utils/cn'
 
 export function DashboardPage() {
   const navigate = useNavigate()
-  const devices = useDeviceStore((s) => s.devices)
+  const runningDevices = useDeviceStore((s) => s.runningDevices)
+  const telemetry = useDeviceStore((s) => s.telemetry)
   const loading = useDeviceStore((s) => s.loading)
-  const fetchDevices = useDeviceStore((s) => s.fetchDevices)
-  const setFilters = useDeviceStore((s) => s.setFilters)
+  const refreshAll = useDeviceStore((s) => s.refreshAll)
   const alerts = useAlertStore((s) => s.alerts)
   const fetchAlerts = useAlertStore((s) => s.fetchAlerts)
-  const [activities, setActivities] = useState<ActivityItem[]>([])
 
   const alertCount = useMemo(
     () => alerts.filter((a) => !a.acknowledged).length,
     [alerts],
   )
 
-  const stats = useMemo(() => ({
-    total: devices.length,
-    online: devices.filter((d) => d.status === 'online').length,
-    offline: devices.filter((d) => d.status === 'offline').length,
-    warning: devices.filter((d) => d.status === 'warning').length,
-    alerts: devices.filter((d) => d.status === 'warning' || d.status === 'offline').length,
-  }), [devices])
-
   useEffect(() => {
-    fetchDevices()
-    fetchAlerts()
-    getActivitiesApi().then(setActivities)
-  }, [fetchDevices, fetchAlerts])
+    refreshAll().catch(() => {})
+    fetchAlerts().catch(() => {})
+  }, [refreshAll, fetchAlerts])
+
+  const typeCounts = useMemo(() => {
+    const counts: Partial<Record<SimulatorDeviceType, number>> = {}
+    for (const id of runningDevices) {
+      const type = telemetry[id]?.device_type
+      if (type) counts[type] = (counts[type] ?? 0) + 1
+    }
+    return counts
+  }, [runningDevices, telemetry])
 
   const statCards = [
-    { label: 'Total Devices', value: stats.total, icon: Cpu, color: 'text-accent bg-accent/10 border-accent/20', filter: {} },
-    { label: 'Online Sensors', value: stats.online, icon: Wifi, color: 'text-status-online bg-status-online/10 border-status-online/20', filter: { status: 'online' as DeviceStatus } },
-    { label: 'Offline Nodes', value: stats.offline, icon: WifiOff, color: 'text-status-offline bg-status-offline/10 border-status-offline/20', filter: { status: 'offline' as DeviceStatus } },
-    { label: 'Active Alerts', value: alertCount, icon: Bell, color: 'text-status-error bg-status-error/10 border-status-error/20', filter: null },
+    { label: 'Running Devices', value: runningDevices.length, icon: Cpu, color: 'text-accent bg-accent/10 border-accent/20', onClick: () => navigate('/devices') },
+    { label: 'Active Alerts', value: alertCount, icon: Bell, color: 'text-status-error bg-status-error/10 border-status-error/20', onClick: () => navigate('/alerts') },
   ]
-
-  const handleStatClick = (filter: { status?: DeviceStatus } | null) => {
-    if (filter === null) { navigate('/alerts'); return }
-    setFilters(filter)
-    navigate('/devices')
-  }
 
   return (
     <div className="space-y-8 select-none">
@@ -60,12 +49,11 @@ export function DashboardPage() {
         <p className="text-sm text-text-muted font-medium">Overview of your IoT simulation network activity.</p>
       </div>
 
-      {/* Stats Cards Section */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {loading
-          ? Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)
-          : statCards.map(({ label, value, icon: Icon, color, filter }) => (
-            <Card key={label} interactive onClick={() => handleStatClick(filter)} className="w-full">
+        {loading && runningDevices.length === 0
+          ? Array.from({ length: 2 }).map((_, i) => <CardSkeleton key={i} />)
+          : statCards.map(({ label, value, icon: Icon, color, onClick }) => (
+            <Card key={label} interactive onClick={onClick} className="w-full">
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 p-0">
                 <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">{label}</span>
                 <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg border', color)}>
@@ -74,66 +62,37 @@ export function DashboardPage() {
               </CardHeader>
               <CardContent className="p-0 mt-3">
                 <div className="text-3xl font-bold tracking-tight text-text-primary">{value}</div>
-                <p className="text-[11px] font-semibold text-text-muted uppercase mt-1">System Node telemetry</p>
+                <p className="text-[11px] font-semibold text-text-muted uppercase mt-1">Live from backend</p>
               </CardContent>
             </Card>
           ))}
       </div>
 
-      {/* Device Categories */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Activity className="h-5 w-5 text-accent" />
-          <h2 className="text-lg font-bold tracking-tight">Device Categories</h2>
-        </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {(Object.entries(deviceTypeConfig) as [keyof typeof deviceTypeConfig, typeof deviceTypeConfig.temperature][]).map(([type, cfg]) => {
-            const count = devices.filter((d) => d.type === type).length
-            const Icon = cfg.icon
-            return (
+        <h2 className="text-lg font-bold tracking-tight">Running Device Types</h2>
+        {runningDevices.length === 0 ? (
+          <Card className="py-10 text-center">
+            <p className="text-sm text-text-muted font-medium">No devices running.</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {(Object.entries(typeCounts) as [SimulatorDeviceType, number][]).map(([type, count]) => (
               <Card
                 key={type}
                 interactive
-                onClick={() => { setFilters({ type }); navigate('/devices') }}
+                onClick={() => navigate('/devices')}
                 className="flex flex-col items-center justify-center text-center p-5"
               >
-                <div className={cn('flex h-11 w-11 items-center justify-center rounded-xl', cfg.color)}>
-                  <Icon className="h-5.5 w-5.5" />
-                </div>
-                <p className="mt-3 text-xs font-bold uppercase tracking-wider text-text-primary">{cfg.label}</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-text-primary">
+                  {SIMULATOR_DEVICE_TYPE_LABELS[type]}
+                </p>
                 <p className="text-xs text-text-muted font-semibold mt-1">{count} active</p>
               </Card>
-            )
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Recent Activity Feed */}
-      <div className="space-y-3">
-        <h2 className="text-lg font-bold tracking-tight">Recent System Activity</h2>
-        <Card className="max-h-72 overflow-y-auto scrollbar-thin p-0">
-          <CardContent className="p-0 divide-y divide-border">
-            {activities.length === 0 ? (
-              <div className="py-8 text-center text-sm text-text-muted font-medium">No activity registered.</div>
-            ) : (
-              activities.map((a) => (
-                <div key={a.id} className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-bg-elevated/50">
-                  <div className={cn(
-                    'h-2 w-2 shrink-0 rounded-full',
-                    a.type === 'error' ? 'bg-status-error' : a.type === 'warning' ? 'bg-status-warning' : a.type === 'success' ? 'bg-status-online' : 'bg-accent',
-                  )} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-text-secondary truncate">{a.message}</p>
-                    <p className="text-xs text-text-muted font-medium mt-0.5">{formatRelativeTime(a.timestamp)}</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Floating Add Device action key for mobile screens */}
       <button
         onClick={() => navigate('/devices?add=true')}
         className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-lg shadow-accent/20 hover:bg-accent-hover active:bg-accent-active md:bottom-6 lg:hidden cursor-pointer"
