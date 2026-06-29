@@ -51,17 +51,17 @@ export function OtpPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors items-center justify-center px-6 select-none">
+    <div className="flex min-h-screen bg-bg-primary text-text-primary transition-colors items-center justify-center px-6 select-none">
       <div className="w-full max-w-sm text-center space-y-6">
         <div className="flex flex-col items-center space-y-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
             <Cpu className="h-5 w-5 text-white" />
           </div>
           <h2 className="text-3xl font-extrabold tracking-tight">Verify your email</h2>
-          <p className="text-sm text-slate-500 font-medium">
-            We sent a 6-digit code to <strong className="text-slate-900 dark:text-white">{pendingEmail ?? 'your email'}</strong>
+          <p className="text-sm text-text-muted font-medium">
+            We sent a 6-digit code to <strong className="text-text-primary">{pendingEmail ?? 'your email'}</strong>
           </p>
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-bg-elevated px-3 py-1 text-[11px] font-semibold text-text-muted">
             Hint: use code 123456
           </div>
         </div>
@@ -78,23 +78,23 @@ export function OtpPage() {
                 value={d}
                 onChange={(e) => handleChange(i, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(i, e)}
-                className="h-12 w-10 rounded-md border border-slate-200 text-center text-lg font-bold dark:border-slate-800 dark:bg-slate-950 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 sm:h-14 sm:w-12 transition-all shadow-sm"
+                className="h-12 w-10 rounded-md border border-border text-center text-lg font-bold text-text-primary bg-bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-subtle/40 focus-visible:border-border-accent sm:h-14 sm:w-12 transition-all shadow-sm"
               />
             ))}
           </div>
           
-          {error && <p className="text-sm font-medium text-red-500">{error}</p>}
+          {error && <p className="text-sm font-medium text-status-error">{error}</p>}
           
           <Button type="submit" className="w-full h-11" loading={loading}>
             Verify
           </Button>
         </form>
 
-        <p className="text-sm text-slate-500 font-medium">
+        <p className="text-sm text-text-muted font-medium">
           {resendTimer > 0 ? (
-            <>Resend code in <strong className="text-slate-900 dark:text-white">{resendTimer}s</strong></>
+            <>Resend code in <strong className="text-text-primary">{resendTimer}s</strong></>
           ) : (
-            <button className="font-semibold text-primary-600 hover:underline dark:text-primary-400" onClick={() => setResendTimer(60)}>
+            <button className="font-semibold text-accent hover:text-accent-hover cursor-pointer" onClick={() => setResendTimer(60)}>
               Resend code
             </button>
           )}

@@ -14,7 +14,7 @@ export function SignalStrength({ strength, className }: SignalStrengthProps) {
           key={i}
           className={cn(
             'w-1 rounded-sm',
-            strength >= threshold ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600',
+            strength >= threshold ? 'bg-status-online' : 'bg-text-muted/40',
           )}
           style={{ height: `${(i + 1) * 25}%` }}
         />

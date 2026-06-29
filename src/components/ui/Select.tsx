@@ -15,7 +15,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         {label && (
           <label
             htmlFor={selectId}
-            className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+            className="text-xs font-semibold uppercase tracking-wider text-text-muted"
           >
             {label}
           </label>
@@ -25,19 +25,19 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             ref={ref}
             id={selectId}
             className={cn(
-              'flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:focus-visible:ring-primary-400 appearance-none cursor-pointer pr-8',
-              error && 'border-red-500 dark:border-red-900 focus-visible:ring-red-500 dark:focus-visible:ring-red-900',
+              'flex h-10 w-full rounded-md border border-border bg-bg-surface px-3 py-2 text-sm text-text-primary shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-subtle/40 focus-visible:border-border-accent disabled:cursor-not-allowed disabled:opacity-50 appearance-none cursor-pointer pr-8',
+              error && 'border-status-error focus-visible:ring-status-error/40',
               className
             )}
             {...props}
           >
             {options.map((o) => (
-              <option key={o.value} value={o.value} className="dark:bg-slate-950">
+              <option key={o.value} value={o.value} className="bg-bg-surface">
                 {o.label}
               </option>
             ))}
           </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400 dark:text-slate-500">
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-text-muted">
             <svg
               className="h-4 w-4"
               fill="none"
@@ -53,7 +53,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             </svg>
           </div>
         </div>
-        {error && <p className="text-[11px] text-red-500 font-medium">{error}</p>}
+        {error && <p className="text-[11px] text-status-error font-medium">{error}</p>}
       </div>
     )
   }

@@ -31,7 +31,7 @@ export function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCo
   return (
     <aside
       className={cn(
-        'hidden md:flex flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 transition-all duration-300 relative',
+        'hidden md:flex flex-col border-r border-border bg-bg-surface transition-all duration-300 relative',
         collapsed ? 'w-16' : 'w-60',
         'h-[calc(100vh-64px)] sticky top-16',
       )}
@@ -45,16 +45,16 @@ export function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCo
               to={to}
               title={label}
               className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all group min-h-[40px]',
+                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all group min-h-[40px] cursor-pointer',
                 active
-                  ? 'bg-primary-600 text-white shadow-sm shadow-primary-600/10'
-                  : 'text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100',
+                  ? 'bg-accent text-white shadow-sm shadow-accent/10'
+                  : 'text-text-muted hover:bg-bg-elevated hover:text-text-primary',
               )}
             >
-              <Icon className={cn('h-5 w-5 shrink-0 transition-transform group-hover:scale-105', active ? 'text-white' : 'text-slate-500 dark:text-slate-400')} />
+              <Icon className={cn('h-5 w-5 shrink-0 transition-transform group-hover:scale-105', active ? 'text-white' : 'text-text-muted')} />
               {!collapsed && <span className="truncate">{label}</span>}
               {!collapsed && to === '/alerts' && alertCount > 0 && (
-                <span className={cn("ml-auto rounded-full px-2 py-0.5 text-xs font-semibold animate-pulse", active ? "bg-white text-primary-600" : "bg-red-500 text-white")}>
+                <span className={cn("ml-auto rounded-full px-2 py-0.5 text-xs font-semibold animate-pulse", active ? "bg-white text-accent" : "bg-status-error text-white")}>
                   {alertCount}
                 </span>
               )}
@@ -66,7 +66,7 @@ export function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCo
       {setCollapsed && (
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="absolute right-[-14px] top-4 z-40 hidden md:flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer"
+          className="absolute right-[-14px] top-4 z-40 hidden md:flex h-7 w-7 items-center justify-center rounded-full border border-border bg-bg-surface shadow-sm text-text-muted hover:text-text-primary cursor-pointer"
         >
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </button>
@@ -80,7 +80,7 @@ export function BottomNav() {
   const mainItems = navItems.slice(0, 5)
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-slate-200 bg-white/90 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/90 md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-border bg-bg-surface/90 backdrop-blur-md md:hidden">
       {mainItems.map(({ to, icon: Icon, label }) => {
         const active = location.pathname === to
         return (
@@ -88,8 +88,8 @@ export function BottomNav() {
             key={to}
             to={to}
             className={cn(
-              'flex flex-1 flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-colors',
-              active ? 'text-primary-600 dark:text-primary-400 font-semibold' : 'text-slate-500 dark:text-slate-400',
+              'flex flex-1 flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-colors cursor-pointer',
+              active ? 'text-accent font-semibold' : 'text-text-muted',
             )}
           >
             <Icon className="h-5 w-5" />
@@ -108,36 +108,36 @@ export function TopNav() {
   const logout = useAuthStore((s) => s.logout)
 
   return (
-    <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white/80 px-4 backdrop-blur-md dark:border-slate-850/80 dark:bg-slate-900/85">
-      <Link to="/" className="items-center gap-2.5 shrink-0 flex flex-row justify-start group">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-600 group-hover:scale-[1.03] transition-transform">
+    <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-border/80 bg-bg-surface/80 px-4 backdrop-blur-md">
+      <Link to="/" className="items-center gap-2.5 shrink-0 flex flex-row justify-start group cursor-pointer">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent group-hover:scale-[1.03] transition-transform">
           <Cpu className="h-5 w-5 text-white" />
         </div>
-        <span className="hidden font-bold tracking-tight text-lg text-slate-900 dark:text-white sm:inline">AlignAV</span>
+        <span className="hidden font-bold tracking-tight text-lg text-text-primary sm:inline">AlignAV</span>
       </Link>
 
       <div className="hidden flex-1 max-w-md md:block">
         <div className="relative group">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted group-focus-within:text-accent transition-colors" />
           <input
             placeholder="Search devices, alerts..."
-            className="h-10 w-full rounded-md border border-slate-200 bg-slate-50/50 pl-10 pr-4 text-sm dark:border-slate-800 dark:bg-slate-950 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:focus:ring-primary-400 placeholder:text-slate-400 transition-all focus:bg-white dark:focus:bg-slate-950"
+            className="h-10 w-full rounded-md border border-border bg-bg-primary/50 pl-10 pr-4 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-subtle/40 focus:border-border-accent placeholder:text-text-muted transition-all focus:bg-bg-surface"
           />
         </div>
       </div>
 
       <div className="relative flex flex-row items-center gap-3">
         <button
-          className="md:hidden min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+          className="md:hidden min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg hover:bg-bg-elevated text-text-muted cursor-pointer"
           onClick={() => setSearchOpen(!searchOpen)}
         >
           {searchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
         </button>
 
-        <Link to="/alerts" className="relative min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors">
+        <Link to="/alerts" className="relative min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg hover:bg-bg-elevated text-text-muted transition-colors cursor-pointer">
           <Bell className="h-5 w-5" />
           {alertCount > 0 && (
-            <span className="absolute right-1 top-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-slate-900 animate-pulse">
+            <span className="absolute right-1 top-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-status-error text-[10px] font-bold text-white ring-2 ring-bg-surface animate-pulse">
               {alertCount}
             </span>
           )}
@@ -145,24 +145,24 @@ export function TopNav() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700 dark:bg-primary-950 dark:text-primary-300 ring-2 ring-primary-500/10 hover:ring-primary-500/30 transition-all cursor-pointer min-h-[36px] min-w-[36px]">
+            <button className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/15 text-sm font-semibold text-accent ring-2 ring-accent/10 hover:ring-accent/30 transition-all cursor-pointer min-h-[36px] min-w-[36px]">
               {user?.name?.charAt(0).toUpperCase() ?? 'U'}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>
-              <p className="font-semibold text-slate-950 dark:text-slate-100">{user?.name}</p>
-              <p className="text-xs text-slate-500 font-normal mt-0.5">{user?.email}</p>
+              <p className="font-semibold text-text-primary">{user?.name}</p>
+              <p className="text-xs text-text-muted font-normal mt-0.5">{user?.email}</p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link to="/settings" className="flex w-full items-center gap-2">
-                <Settings className="h-4 w-4 text-slate-500" />
+                <Settings className="h-4 w-4 text-text-muted" />
                 <span>Settings</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout} className="text-red-600 dark:text-red-400 focus:bg-red-50 dark:focus:bg-red-950/30 flex items-center gap-2">
+            <DropdownMenuItem onClick={logout} className="text-status-error focus:bg-status-error/10 flex items-center gap-2">
               <LogOut className="h-4 w-4" />
               <span>Sign out</span>
             </DropdownMenuItem>
@@ -171,13 +171,13 @@ export function TopNav() {
       </div>
 
       {searchOpen && (
-        <div className="absolute left-0 right-0 top-16 z-50 border-b border-slate-200 bg-white p-3 shadow-lg dark:border-slate-800 dark:bg-slate-900 md:hidden animate-in slide-in-from-top duration-200">
+        <div className="absolute left-0 right-0 top-16 z-50 border-b border-border bg-bg-surface p-3 shadow-lg md:hidden animate-in slide-in-from-top duration-200">
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
             <input
               placeholder="Search..."
               autoFocus
-              className="h-10 w-full rounded-md border border-slate-200 pl-10 pr-4 text-sm dark:border-slate-800 dark:bg-slate-950 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              className="h-10 w-full rounded-md border border-border bg-bg-primary pl-10 pr-4 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-subtle/40"
             />
           </div>
         </div>
@@ -190,7 +190,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950 transition-colors">
+    <div className="flex min-h-screen flex-col bg-bg-primary transition-colors">
       <TopNav />
       <div className="flex flex-1">
         <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
