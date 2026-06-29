@@ -1,18 +1,18 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Cpu, Wifi, WifiOff, Bell, Activity } from 'lucide-react'
+import { Plus, Cpu, Bell, Wifi, WifiOff, Activity } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@/components/ui/Card'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useDeviceStore } from '@/store/deviceStore'
 import { useAlertStore } from '@/store/alertStore'
-import { getActivitiesApi } from '@/services/api'
-import { deviceTypeConfig } from '@/utils/deviceIcons'
-import { formatRelativeTime } from '@/utils/format'
-import type { ActivityItem, DeviceStatus } from '@/types'
+import type { DeviceStatus, ActivityItem } from '@/types'
 import { cn } from '@/utils/cn'
 import { motion } from 'framer-motion'
 import type { Variants } from 'framer-motion'
 import { SpotlightCard } from '@/components/ui/SpotlightCard'
+import { getActivitiesApi } from '@/services/api'
+import { formatRelativeTime } from '@/utils/format'
+import { deviceTypeConfig } from '@/utils/deviceIcons'
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -46,6 +46,7 @@ export function DashboardPage() {
   const setFilters = useDeviceStore((s) => s.setFilters)
   const alerts = useAlertStore((s) => s.alerts)
   const fetchAlerts = useAlertStore((s) => s.fetchAlerts)
+  const refreshAll = useDeviceStore((s) => s.refreshAll)
   const [activities, setActivities] = useState<ActivityItem[]>([])
 
   const alertCount = useMemo(
@@ -62,10 +63,10 @@ export function DashboardPage() {
   }), [devices])
 
   useEffect(() => {
-    fetchDevices()
-    fetchAlerts()
-    getActivitiesApi().then(setActivities)
-  }, [fetchDevices, fetchAlerts])
+    refreshAll().catch(() => {})
+    fetchAlerts().catch(() => {})
+    getActivitiesApi().then(setActivities).catch(() => {})
+  }, [refreshAll, fetchAlerts])
 
   const statCards = [
     { label: 'Total Devices', value: stats.total, icon: Cpu, color: 'text-accent bg-accent/10 border-accent/20', spotlightColor: 'rgba(13, 148, 136, 0.15)', filter: {} },
@@ -94,7 +95,7 @@ export function DashboardPage() {
         animate="show"
         className="grid grid-cols-2 gap-4 lg:grid-cols-4"
       >
-        {loading
+        {loading && devices.length === 0
           ? Array.from({ length: 4 }).map((_, i) => (
               <motion.div key={i} variants={itemVariants}>
                 <CardSkeleton />

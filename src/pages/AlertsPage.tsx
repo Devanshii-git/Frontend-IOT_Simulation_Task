@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Plus, Settings2, ShieldAlert, CheckCircle, BarChart3 } from 'lucide-react'
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { StatusPill } from '@/components/ui/StatusPill'
@@ -24,20 +23,10 @@ const conditionOptions = [
   { value: 'eq', label: 'Equal to' },
 ]
 
-// Mock alert trend data matching the design specs
-const alertTrendData = [
-  { day: 'Mon', count: 4 },
-  { day: 'Tue', count: 7 },
-  { day: 'Wed', count: 5 },
-  { day: 'Thu', count: 12 },
-  { day: 'Fri', count: 8 },
-  { day: 'Sat', count: 3 },
-  { day: 'Sun', count: 6 },
-]
-
 export function AlertsPage() {
   const { alerts, rules, loading, fetchAlerts, fetchRules, acknowledgeAlert, createRule, toggleRule } = useAlertStore()
-  const { devices, fetchDevices } = useDeviceStore()
+  const runningDevices = useDeviceStore((s) => s.runningDevices)
+  const refreshAll = useDeviceStore((s) => s.refreshAll)
   const [showRuleModal, setShowRuleModal] = useState(false)
   const [ruleForm, setRuleForm] = useState({
     deviceId: '', metric: 'temperature', condition: 'gt' as AlertCondition, threshold: 80,
@@ -47,8 +36,8 @@ export function AlertsPage() {
   useEffect(() => {
     fetchAlerts()
     fetchRules()
-    fetchDevices()
-  }, [fetchAlerts, fetchRules, fetchDevices])
+    refreshAll().catch(() => {})
+  }, [fetchAlerts, fetchRules, refreshAll])
 
   const activeAlerts = useMemo(() => alerts.filter((a) => !a.acknowledged), [alerts])
 
@@ -59,11 +48,10 @@ export function AlertsPage() {
 
   const handleCreateRule = async (e: React.FormEvent) => {
     e.preventDefault()
-    const device = devices.find((d) => d.id === ruleForm.deviceId)
-    if (!device) return
+    if (!ruleForm.deviceId) return
     await createRule({
       deviceId: ruleForm.deviceId,
-      deviceName: device.name,
+      deviceName: ruleForm.deviceId,
       metric: ruleForm.metric,
       condition: ruleForm.condition,
       threshold: ruleForm.threshold,
@@ -179,30 +167,8 @@ export function AlertsPage() {
               <h2 className="text-lg font-bold tracking-tight">Alert Frequencies</h2>
             </div>
             <Card className="p-4">
-              <div className="h-36 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={alertTrendData}>
-                    <defs>
-                      <linearGradient id="alertGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#EF4444" stopOpacity={0.15}/>
-                        <stop offset="95%" stopColor="#EF4444" stopOpacity={0.01}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-                    <XAxis dataKey="day" tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 'bold' }} tickLine={false} axisLine={false} />
-                    <YAxis tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 'bold' }} tickLine={false} axisLine={false} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'var(--color-bg-elevated)',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: '6px',
-                        color: 'var(--color-text-primary)',
-                        fontSize: '10px'
-                      }}
-                    />
-                    <Area type="monotone" dataKey="count" stroke="#EF4444" fill="url(#alertGrad)" strokeWidth={1.5} />
-                  </AreaChart>
-                </ResponsiveContainer>
+              <div className="flex h-36 w-full items-center justify-center text-sm text-text-muted font-medium">
+                No alert trend data available.
               </div>
             </Card>
           </div>
@@ -241,7 +207,7 @@ export function AlertsPage() {
         <form onSubmit={handleCreateRule} className="space-y-4">
           <Select
             label="Device"
-            options={devices.map((d) => ({ value: d.id, label: d.name }))}
+            options={runningDevices.map((id) => ({ value: id, label: id }))}
             value={ruleForm.deviceId}
             onChange={(e) => setRuleForm({ ...ruleForm, deviceId: e.target.value })}
           />
