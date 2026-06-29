@@ -16,6 +16,7 @@ interface DeviceState {
   fetchDevices: () => Promise<void>
   addDevice: (payload: Omit<Device, 'id' | 'status' | 'isToggledOn' | 'signalStrength' | 'lastPing'>) => Promise<void>
   toggleDevice: (id: string, isToggledOn: boolean) => Promise<void>
+  updateDeviceDetails: (id: string, payload: Partial<Device>) => Promise<void>
   updateDeviceStatus: (id: string, status: DeviceStatus) => void
   deleteDevice: (id: string) => Promise<void>
   setFilters: (filters: Partial<DeviceFilters>) => void
@@ -45,6 +46,10 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   },
   toggleDevice: async (id, isToggledOn) => {
     const updated = await updateDeviceApi(id, { isToggledOn })
+    set((s) => ({ devices: s.devices.map((d) => (d.id === id ? updated : d)) }))
+  },
+  updateDeviceDetails: async (id, payload) => {
+    const updated = await updateDeviceApi(id, payload)
     set((s) => ({ devices: s.devices.map((d) => (d.id === id ? updated : d)) }))
   },
   updateDeviceStatus: (id, status) => {

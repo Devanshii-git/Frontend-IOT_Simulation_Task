@@ -166,6 +166,12 @@ export async function updateAlertRuleApi(id: string, payload: Partial<AlertRule>
   return rules[idx]
 }
 
+export async function deleteAlertRuleApi(id: string) {
+  await delay(300)
+  rules = rules.filter((r) => r.id !== id)
+  return { success: true }
+}
+
 export async function getActivitiesApi(): Promise<ActivityItem[]> {
   await delay(200)
   return [...activities]

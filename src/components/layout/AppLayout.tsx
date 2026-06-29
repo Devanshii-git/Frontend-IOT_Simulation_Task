@@ -6,6 +6,9 @@ import { cn } from '@/utils/cn'
 import { useAlertStore } from '@/store/alertStore'
 import { useAuthStore } from '@/store/authStore'
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import LightRays from '@/components/ui/LightRays'
+import { GlobalSpotlight } from '@/components/ui/MagicBento'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +26,8 @@ const navItems = [
   { to: '/simulation', icon: FlaskConical, label: 'Simulation' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ]
+
+
 
 export function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed?: (val: boolean) => void }) {
   const location = useLocation()
@@ -108,7 +113,7 @@ export function TopNav() {
   const logout = useAuthStore((s) => s.logout)
 
   return (
-    <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-border/80 bg-bg-surface/80 px-4 backdrop-blur-md">
+    <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-border/40 bg-bg-surface/60 px-4 backdrop-blur-lg">
       <Link to="/" className="items-center gap-2.5 shrink-0 flex flex-row justify-start group cursor-pointer">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent group-hover:scale-[1.03] transition-transform">
           <Cpu className="h-5 w-5 text-white" />
@@ -188,16 +193,47 @@ export function TopNav() {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
+  const location = useLocation()
 
   return (
-    <div className="flex min-h-screen flex-col bg-bg-primary transition-colors">
+    <div className="flex min-h-screen flex-col bg-bg-primary transition-colors relative overflow-x-hidden">
+      {/* Global spotlight for Magic Bento cards */}
+      <GlobalSpotlight glowColor="132, 0, 255" spotlightRadius={400} />
+
+      {/* LightRays background */}
+      <div className="absolute inset-0 z-0 pointer-events-none opacity-40 dark:opacity-15">
+        <LightRays
+          raysOrigin="top-center"
+          raysColor="#ffffff"
+          raysSpeed={0.8}
+          lightSpread={0.5}
+          rayLength={3}
+          followMouse={true}
+          mouseInfluence={0.08}
+          noiseAmount={0}
+          distortion={0}
+          pulsating={false}
+          fadeDistance={1}
+          saturation={1}
+        />
+      </div>
+
       <TopNav />
-      <div className="flex flex-1">
+      <div className="flex flex-1 z-10 relative">
         <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-        <main className="flex-1 overflow-auto p-4 pb-20 md:pb-6 lg:p-8">
-          <div className="mx-auto max-w-7xl animate-in fade-in duration-300">
-            {children}
-          </div>
+        <main className="flex-1 p-4 pb-20 md:pb-6 lg:p-8">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="mx-auto max-w-7xl"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
       <BottomNav />

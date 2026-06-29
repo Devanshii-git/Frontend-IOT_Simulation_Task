@@ -10,6 +10,33 @@ import { deviceTypeConfig } from '@/utils/deviceIcons'
 import { formatRelativeTime } from '@/utils/format'
 import type { ActivityItem, DeviceStatus } from '@/types'
 import { cn } from '@/utils/cn'
+import { motion } from 'framer-motion'
+import type { Variants } from 'framer-motion'
+import { SpotlightCard } from '@/components/ui/SpotlightCard'
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.05,
+    },
+  },
+}
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 15 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: 'spring',
+      stiffness: 110,
+      damping: 14,
+    },
+  },
+}
 
 export function DashboardPage() {
   const navigate = useNavigate()
@@ -41,10 +68,10 @@ export function DashboardPage() {
   }, [fetchDevices, fetchAlerts])
 
   const statCards = [
-    { label: 'Total Devices', value: stats.total, icon: Cpu, color: 'text-accent bg-accent/10 border-accent/20', filter: {} },
-    { label: 'Online Sensors', value: stats.online, icon: Wifi, color: 'text-status-online bg-status-online/10 border-status-online/20', filter: { status: 'online' as DeviceStatus } },
-    { label: 'Offline Nodes', value: stats.offline, icon: WifiOff, color: 'text-status-offline bg-status-offline/10 border-status-offline/20', filter: { status: 'offline' as DeviceStatus } },
-    { label: 'Active Alerts', value: alertCount, icon: Bell, color: 'text-status-error bg-status-error/10 border-status-error/20', filter: null },
+    { label: 'Total Devices', value: stats.total, icon: Cpu, color: 'text-accent bg-accent/10 border-accent/20', spotlightColor: 'rgba(13, 148, 136, 0.15)', filter: {} },
+    { label: 'Online Sensors', value: stats.online, icon: Wifi, color: 'text-status-online bg-status-online/10 border-status-online/20', spotlightColor: 'rgba(13, 148, 136, 0.15)', filter: { status: 'online' as DeviceStatus } },
+    { label: 'Offline Nodes', value: stats.offline, icon: WifiOff, color: 'text-status-offline bg-status-offline/10 border-status-offline/20', spotlightColor: 'rgba(107, 114, 128, 0.15)', filter: { status: 'offline' as DeviceStatus } },
+    { label: 'Active Alerts', value: alertCount, icon: Bell, color: 'text-status-error bg-status-error/10 border-status-error/20', spotlightColor: 'rgba(239, 68, 68, 0.15)', filter: null },
   ]
 
   const handleStatClick = (filter: { status?: DeviceStatus } | null) => {
@@ -61,24 +88,40 @@ export function DashboardPage() {
       </div>
 
       {/* Stats Cards Section */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
+      >
         {loading
-          ? Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)
-          : statCards.map(({ label, value, icon: Icon, color, filter }) => (
-            <Card key={label} interactive onClick={() => handleStatClick(filter)} className="w-full">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 p-0">
-                <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">{label}</span>
-                <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg border', color)}>
-                  <Icon className="h-4.5 w-4.5" />
-                </div>
-              </CardHeader>
-              <CardContent className="p-0 mt-3">
-                <div className="text-3xl font-bold tracking-tight text-text-primary">{value}</div>
-                <p className="text-[11px] font-semibold text-text-muted uppercase mt-1">System Node telemetry</p>
-              </CardContent>
-            </Card>
-          ))}
-      </div>
+          ? Array.from({ length: 4 }).map((_, i) => (
+              <motion.div key={i} variants={itemVariants}>
+                <CardSkeleton />
+              </motion.div>
+            ))
+          : statCards.map(({ label, value, icon: Icon, color, spotlightColor, filter }) => (
+              <motion.div key={label} variants={itemVariants}>
+                <SpotlightCard
+                  interactive
+                  onClick={() => handleStatClick(filter)}
+                  spotlightColor={spotlightColor}
+                  className="w-full"
+                >
+                  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 p-0">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">{label}</span>
+                    <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg border', color)}>
+                      <Icon className="h-4.5 w-4.5" />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-0 mt-3">
+                    <div className="text-3xl font-bold tracking-tight text-text-primary">{value}</div>
+                    <p className="text-[11px] font-semibold text-text-muted uppercase mt-1">System Node telemetry</p>
+                  </CardContent>
+                </SpotlightCard>
+              </motion.div>
+            ))}
+      </motion.div>
 
       {/* Device Categories */}
       <div className="space-y-3">
@@ -86,48 +129,65 @@ export function DashboardPage() {
           <Activity className="h-5 w-5 text-accent" />
           <h2 className="text-lg font-bold tracking-tight">Device Categories</h2>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
+        >
           {(Object.entries(deviceTypeConfig) as [keyof typeof deviceTypeConfig, typeof deviceTypeConfig.temperature][]).map(([type, cfg]) => {
             const count = devices.filter((d) => d.type === type).length
             const Icon = cfg.icon
             return (
-              <Card
-                key={type}
-                interactive
-                onClick={() => { setFilters({ type }); navigate('/devices') }}
-                className="flex flex-col items-center justify-center text-center p-5"
-              >
-                <div className={cn('flex h-11 w-11 items-center justify-center rounded-xl', cfg.color)}>
-                  <Icon className="h-5.5 w-5.5" />
-                </div>
-                <p className="mt-3 text-xs font-bold uppercase tracking-wider text-text-primary">{cfg.label}</p>
-                <p className="text-xs text-text-muted font-semibold mt-1">{count} active</p>
-              </Card>
+              <motion.div key={type} variants={itemVariants}>
+                <SpotlightCard
+                  interactive
+                  onClick={() => { setFilters({ type }); navigate('/devices') }}
+                  className="flex flex-col items-center justify-center text-center p-5 h-full"
+                >
+                  <div className={cn('flex h-11 w-11 items-center justify-center rounded-xl', cfg.color)}>
+                    <Icon className="h-5.5 w-5.5" />
+                  </div>
+                  <p className="mt-3 text-xs font-bold uppercase tracking-wider text-text-primary">{cfg.label}</p>
+                  <p className="text-xs text-text-muted font-semibold mt-1">{count} active</p>
+                </SpotlightCard>
+              </motion.div>
             )
           })}
-        </div>
+        </motion.div>
       </div>
 
       {/* Recent Activity Feed */}
       <div className="space-y-3">
         <h2 className="text-lg font-bold tracking-tight">Recent System Activity</h2>
         <Card className="max-h-72 overflow-y-auto scrollbar-thin p-0">
-          <CardContent className="p-0 divide-y divide-border">
+          <CardContent className="p-0">
             {activities.length === 0 ? (
               <div className="py-8 text-center text-sm text-text-muted font-medium">No activity registered.</div>
             ) : (
-              activities.map((a) => (
-                <div key={a.id} className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-bg-elevated/50">
-                  <div className={cn(
-                    'h-2 w-2 shrink-0 rounded-full',
-                    a.type === 'error' ? 'bg-status-error' : a.type === 'warning' ? 'bg-status-warning' : a.type === 'success' ? 'bg-status-online' : 'bg-accent',
-                  )} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-text-secondary truncate">{a.message}</p>
-                    <p className="text-xs text-text-muted font-medium mt-0.5">{formatRelativeTime(a.timestamp)}</p>
-                  </div>
-                </div>
-              ))
+              <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                animate="show"
+                className="divide-y divide-border"
+              >
+                {activities.map((a) => (
+                  <motion.div
+                    key={a.id}
+                    variants={itemVariants}
+                    className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-bg-elevated/50"
+                  >
+                    <div className={cn(
+                      'h-2 w-2 shrink-0 rounded-full',
+                      a.type === 'error' ? 'bg-status-error' : a.type === 'warning' ? 'bg-status-warning' : a.type === 'success' ? 'bg-status-online' : 'bg-accent',
+                    )} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-text-secondary truncate">{a.message}</p>
+                      <p className="text-xs text-text-muted font-medium mt-0.5">{formatRelativeTime(a.timestamp)}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
             )}
           </CardContent>
         </Card>

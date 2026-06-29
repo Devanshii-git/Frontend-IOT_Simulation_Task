@@ -1,37 +1,70 @@
 import { forwardRef, type HTMLAttributes } from 'react'
 import { cn } from '@/utils/cn'
+import { ParticleCard } from './MagicBento'
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   interactive?: boolean
   onClick?: () => void
+  enableStars?: boolean
+  enableBorderGlow?: boolean
+  enableTilt?: boolean
+  enableMagnetism?: boolean
+  clickEffect?: boolean
+  particleCount?: number
+  glowColor?: string
 }
 
 export const Card = forwardRef<HTMLDivElement, CardProps>(
-  ({ className, interactive, onClick, ...props }, ref) => {
-    if (onClick) {
-      return (
-        <button
-          ref={ref as any}
-          onClick={onClick}
-          className={cn(
-            'rounded-xl border border-border bg-bg-surface p-5 text-left transition-all',
-            interactive && 'cursor-pointer hover:shadow-md hover:border-border-accent/50 active:scale-[0.99]',
-            className
-          )}
-          {...(props as any)}
-        />
-      )
-    }
+  (
+    {
+      className,
+      interactive = false,
+      onClick,
+      enableStars = true,
+      enableBorderGlow = true,
+      enableTilt = true,
+      enableMagnetism = false,
+      clickEffect = true,
+      particleCount = 12,
+      glowColor = '13, 148, 136', // signature teal by default
+      children,
+      style,
+      ...props
+    },
+    ref
+  ) => {
+    const isActuallyInteractive = interactive || !!onClick
+
+    const bentoClassName = cn(
+      'magic-bento-card bg-bg-surface rounded-xl border border-border transition-all duration-300',
+      enableBorderGlow && 'magic-bento-card--border-glow',
+      isActuallyInteractive && 'cursor-pointer hover:shadow-md hover:border-border-accent/40',
+      className
+    )
+
+    const mergedStyle = {
+      '--glow-color': glowColor,
+      ...style,
+    } as React.CSSProperties
+
     return (
-      <div
+      <ParticleCard
         ref={ref}
-        className={cn(
-          'rounded-xl border border-border bg-bg-surface p-5 text-left transition-all',
-          interactive && 'cursor-pointer hover:shadow-md hover:border-border-accent/50 active:scale-[0.99]',
-          className
-        )}
+        className={bentoClassName}
+        style={mergedStyle}
+        disableAnimations={!isActuallyInteractive}
+        particleCount={isActuallyInteractive && enableStars ? particleCount : 0}
+        enableTilt={isActuallyInteractive ? enableTilt : false}
+        enableMagnetism={isActuallyInteractive ? enableMagnetism : false}
+        clickEffect={isActuallyInteractive ? clickEffect : false}
+        glowColor={glowColor}
+        onClick={onClick}
         {...props}
-      />
+      >
+        <div className="relative z-10 h-full w-full">
+          {children}
+        </div>
+      </ParticleCard>
     )
   }
 )
