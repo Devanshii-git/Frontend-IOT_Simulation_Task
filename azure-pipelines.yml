@@ -1,0 +1,34 @@
+# azure-pipelines.yml (Frontend)
+# Sprint 1: Full Build & Validation Pipeline
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  node_version: '20.x' # standard modern Node.js version
+
+steps:
+- task: NodeTool@0
+  inputs:
+    versionSpec: '$(node_version)'
+  displayName: 'Install Node.js'
+
+- script: |
+    npm install
+  displayName: 'Install Dependencies'
+
+- script: |
+    npm run lint
+  displayName: 'Run Linting (ESLint)'
+  continueOnError: false
+
+- script: |
+    npm run build
+  displayName: 'Run Build (TypeScript compiler & Vite)'
+  continueOnError: false
