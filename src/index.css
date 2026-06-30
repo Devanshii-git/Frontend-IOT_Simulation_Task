@@ -58,14 +58,14 @@
 
   .dark {
     --color-dot: #FFFFFF;
-    --color-bg-primary: #202020;
-    --color-bg-surface: #2A2A2A;
-    --color-bg-elevated: #333333;
+    --color-bg-primary: #070913;
+    --color-bg-surface: #0F1222;
+    --color-bg-elevated: #161A2E;
     --color-text-primary: #FFFFFF;
-    --color-text-secondary: #E5E7EB;
+    --color-text-secondary: #F3F4F6;
     --color-text-muted: #9CA3AF;
     --color-text-disabled: #6B7280;
-    --color-border: #3F3F3F;
+    --color-border: #1E233D;
   }
 
   * {
@@ -84,9 +84,22 @@
   }
 }
 
+@keyframes shine {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: var(--color-text-muted) transparent;
+  }
+
+  .animate-shine {
+    animation: shine var(--animation-duration, 5s) linear infinite;
   }
 }

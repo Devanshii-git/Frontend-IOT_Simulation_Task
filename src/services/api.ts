@@ -63,6 +63,12 @@ export async function updateAlertRuleApi(_id: string, _payload: Partial<AlertRul
   throw new Error(`Rule not found: ${_id}`)
 }
 
+export async function deleteAlertRuleApi(id: string) {
+  await delay(300)
+  rules = rules.filter((r) => r.id !== id)
+  return { success: true }
+}
+
 export async function getActivitiesApi(): Promise<ActivityItem[]> {
   await delay(200)
   return []

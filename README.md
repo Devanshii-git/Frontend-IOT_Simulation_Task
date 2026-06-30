@@ -28,3 +28,5 @@ npm run dev
 ## Stack
 
 React · TypeScript · Vite · Tailwind CSS · Zustand · Recharts · React Router
+
+*(Verified local git configuration)*
