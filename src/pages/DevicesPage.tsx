@@ -79,7 +79,11 @@ export function DevicesPage() {
     fetchDevices().catch((e) => console.error(e))
   }, [fetchDevices])
 
-  const filtered = useMemo(() => getFilteredDevices(), [getFilteredDevices, devices, filters])
+  const filtered = useMemo(() => {
+    void devices
+    void filters
+    return getFilteredDevices()
+  }, [getFilteredDevices, devices, filters])
 
   // Extract unique locations for filtering
   const locations = useMemo(() => {

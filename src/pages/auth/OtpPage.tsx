@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/store/authStore'
 import { Cpu } from 'lucide-react'
+import LightRays from '@/components/ui/LightRays'
 
 export function OtpPage() {
   const [digits, setDigits] = useState(['', '', '', '', '', ''])
@@ -51,17 +52,35 @@ export function OtpPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-bg-primary text-text-primary transition-colors items-center justify-center px-6 select-none">
-      <div className="w-full max-w-sm text-center space-y-6">
+    <div className="relative flex min-h-screen text-text-primary transition-colors items-center justify-center px-6 select-none overflow-hidden bg-black">
+      {/* Full Page LightRays Background */}
+      <div className="absolute inset-0 z-0 pointer-events-none opacity-50 dark:opacity-20">
+        <LightRays
+          raysOrigin="top-center"
+          raysColor="#ffffff"
+          raysSpeed={0.8}
+          lightSpread={0.5}
+          rayLength={3}
+          followMouse={true}
+          mouseInfluence={0.08}
+          noiseAmount={0}
+          distortion={0}
+          pulsating={false}
+          fadeDistance={1}
+          saturation={1}
+        />
+      </div>
+
+      <div className="w-full max-w-md text-center space-y-6 bg-white/[0.08] dark:bg-white/[0.04] backdrop-blur-xl border border-white/20 dark:border-white/10 p-8 sm:p-10 rounded-3xl shadow-2xl shadow-accent/5 z-10">
         <div className="flex flex-col items-center space-y-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
             <Cpu className="h-5 w-5 text-white" />
           </div>
-          <h2 className="text-3xl font-extrabold tracking-tight">Verify your email</h2>
-          <p className="text-sm text-text-muted font-medium">
-            We sent a 6-digit code to <strong className="text-text-primary">{pendingEmail ?? 'your email'}</strong>
+          <h2 className="text-3xl font-extrabold tracking-tight text-white">Verify your email</h2>
+          <p className="text-sm text-white/60 font-medium">
+            We sent a 6-digit code to <strong className="text-white">{pendingEmail ?? 'your email'}</strong>
           </p>
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-bg-elevated px-3 py-1 text-[11px] font-semibold text-text-muted">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/70">
             Hint: use code 123456
           </div>
         </div>
@@ -78,21 +97,21 @@ export function OtpPage() {
                 value={d}
                 onChange={(e) => handleChange(i, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(i, e)}
-                className="h-12 w-10 rounded-md border border-border text-center text-lg font-bold text-text-primary bg-bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-subtle/40 focus-visible:border-border-accent sm:h-14 sm:w-12 transition-all shadow-sm"
+                className="h-12 w-10 rounded-md border border-white/10 text-center text-lg font-bold text-white bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:border-accent sm:h-14 sm:w-12 transition-all shadow-sm"
               />
             ))}
           </div>
           
           {error && <p className="text-sm font-medium text-status-error">{error}</p>}
           
-          <Button type="submit" className="w-full h-11" loading={loading}>
+          <Button type="submit" className="w-full h-11 shadow-md shadow-accent/15" loading={loading}>
             Verify
           </Button>
         </form>
 
-        <p className="text-sm text-text-muted font-medium">
+        <p className="text-sm text-white/60 font-medium">
           {resendTimer > 0 ? (
-            <>Resend code in <strong className="text-text-primary">{resendTimer}s</strong></>
+            <>Resend code in <strong className="text-white">{resendTimer}s</strong></>
           ) : (
             <button className="font-semibold text-accent hover:text-accent-hover cursor-pointer" onClick={() => setResendTimer(60)}>
               Resend code

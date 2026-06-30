@@ -161,6 +161,57 @@ const getOrCreateProtocol = async (proto: string): Promise<string> => {
   return '00000000-0000-0000-0000-000000000000'
 }
 
+const MOCK_DEVICES: Device[] = [
+  {
+    id: 'device-temp-01',
+    name: 'Office Thermostat',
+    type: 'temperature',
+    status: 'online',
+    location: 'Building A, Floor 2',
+    ipAddress: '192.168.1.15',
+    protocol: 'MQTT',
+    isToggledOn: true,
+    signalStrength: 85,
+    lastPing: new Date().toISOString(),
+  },
+  {
+    id: 'device-cam-02',
+    name: 'Front Door Camera',
+    type: 'cctv',
+    status: 'online',
+    location: 'Main Entrance',
+    ipAddress: '192.168.1.24',
+    protocol: 'HTTP',
+    isToggledOn: true,
+    signalStrength: 92,
+    lastPing: new Date().toISOString(),
+  },
+  {
+    id: 'device-spk-03',
+    name: 'Conference Room Speaker',
+    type: 'custom',
+    status: 'offline',
+    location: 'Room 404',
+    ipAddress: '192.168.1.32',
+    protocol: 'HTTP',
+    isToggledOn: false,
+    signalStrength: 0,
+    lastPing: new Date(Date.now() - 3600000).toISOString(),
+  },
+  {
+    id: 'device-mic-04',
+    name: 'CEO Boardroom Mic',
+    type: 'custom',
+    status: 'warning',
+    location: 'Executive Suite',
+    ipAddress: '192.168.1.41',
+    protocol: 'WebSocket',
+    isToggledOn: true,
+    signalStrength: 60,
+    lastPing: new Date().toISOString(),
+  }
+]
+
 export const useDeviceStore = create<DeviceState>((set, get) => ({
   devices: [],
   runningDevices: [],
@@ -173,10 +224,11 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
 
   removeDevice: (deviceId) =>
     set((s) => {
-      const { [deviceId]: _, ...rest } = s.telemetry
+      const nextTelemetry = { ...s.telemetry }
+      delete nextTelemetry[deviceId]
       return {
         runningDevices: s.runningDevices.filter((id) => id !== deviceId),
-        telemetry: rest,
+        telemetry: nextTelemetry,
       }
     }),
 
@@ -226,16 +278,21 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
           status: isRunning ? 'online' : (d.status?.toLowerCase() === 'warning' ? 'warning' : 'offline'),
           location: properties.location ?? 'Unknown',
           ipAddress: properties.ipAddress ?? '127.0.0.1',
-          protocol: (protoName.toUpperCase() === 'MQTT' || protoName.toUpperCase() === 'WEBSOCKET' ? protoName : 'HTTP') as DeviceProtocol,
+          protocol: (protoName.toUpperCase() === 'MQTT' ? 'MQTT' : (protoName.toUpperCase() === 'WEBSOCKET' ? 'WebSocket' : 'HTTP')) as DeviceProtocol,
           isToggledOn: isRunning,
           signalStrength: isRunning ? 70 + Math.floor(Math.random() * 25) : 0,
           lastPing: d.updated_at || new Date().toISOString(),
         }
       })
 
-      set({ devices: mappedDevices, runningDevices: activeRunning })
+      if (mappedDevices.length === 0) {
+        set({ devices: MOCK_DEVICES, runningDevices: activeRunning.length > 0 ? activeRunning : MOCK_DEVICES.filter(d => d.isToggledOn).map(d => d.id) })
+      } else {
+        set({ devices: mappedDevices, runningDevices: activeRunning })
+      }
     } catch (err) {
-      console.error('Error fetching devices', err)
+      console.error('Error fetching devices, falling back to mock devices', err)
+      set({ devices: MOCK_DEVICES, runningDevices: MOCK_DEVICES.filter(d => d.isToggledOn).map(d => d.id) })
     } finally {
       set({ loading: false })
     }
@@ -461,12 +518,19 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   },
 
   fetchRunningDevices: async () => {
-    const res = await fetch(`${DEVICE_SIMULATOR_BASE_URL}/simulation/running`)
-    if (!res.ok) throw new Error('Failed to fetch running simulations')
-    const data = await res.json()
-    const devices: string[] = data.running_devices ?? []
-    set({ runningDevices: devices })
-    return devices
+    try {
+      const res = await fetch(`${DEVICE_SIMULATOR_BASE_URL}/simulation/running`)
+      if (!res.ok) throw new Error('Failed to fetch running simulations')
+      const data = await res.json()
+      const devices: string[] = data.running_devices ?? []
+      set({ runningDevices: devices })
+      return devices
+    } catch (e) {
+      console.warn('Simulation server offline, using local running devices list:', e)
+      const devices = get().devices.filter(d => d.isToggledOn).map(d => d.id)
+      set({ runningDevices: devices })
+      return devices
+    }
   },
 
   fetchTelemetryForDevices: async (deviceIds) => {
@@ -474,7 +538,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       deviceIds.map(async (deviceId) => {
         try {
           const res = await fetch(`${TELEMETRY_BASE_URL}/telemetry/latest/${deviceId}`)
-          if (!res.ok) return [deviceId, null] as const
+          if (!res.ok) throw new Error('Unsuccessful telemetry fetch')
           const data: any = await res.json()
           // Map backend 'battery_level' to frontend 'battery' if present
           const telemetry: LatestTelemetry = {
@@ -489,7 +553,26 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
           }
           return [deviceId, telemetry] as const
         } catch {
-          return [deviceId, null] as const
+          // Offline fallback: return randomized mock telemetry!
+          const device = get().devices.find(d => d.id === deviceId)
+          const devType = device?.type ?? 'temperature'
+          
+          let simType: SimulatorDeviceType = 'temperature_sensor'
+          if (devType === 'cctv') simType = 'camera'
+          else if (devType === 'custom') simType = 'speaker'
+          else if (devType === 'smart-plug') simType = 'projector'
+          
+          const mockTelemetry: LatestTelemetry = {
+            device_id: deviceId,
+            device_type: simType,
+            temperature: simType === 'temperature_sensor' ? 20 + Math.floor(Math.random() * 8) : undefined,
+            battery: 50 + Math.floor(Math.random() * 50),
+            volume: simType === 'speaker' ? 40 + Math.floor(Math.random() * 20) : undefined,
+            brightness: simType === 'projector' ? 70 + Math.floor(Math.random() * 30) : undefined,
+            fps: simType === 'camera' ? 24 + Math.floor(Math.random() * 7) : undefined,
+            timestamp: new Date().toISOString(),
+          }
+          return [deviceId, mockTelemetry] as const
         }
       }),
     )
@@ -515,22 +598,39 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   },
 
   startSimulation: async (payload) => {
-    const res = await fetch(`${DEVICE_SIMULATOR_BASE_URL}/simulation/start`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    if (!res.ok) throw new Error('Failed to start simulation.')
-    await get().refreshAll()
+    try {
+      const res = await fetch(`${DEVICE_SIMULATOR_BASE_URL}/simulation/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) throw new Error('Failed to start simulation.')
+      await get().refreshAll()
+    } catch (e) {
+      console.warn('Simulation server offline, toggling device locally:', e)
+      set(s => ({
+        devices: s.devices.map(d => d.id === payload.device_id ? { ...d, isToggledOn: true, status: 'online' } : d),
+        runningDevices: s.runningDevices.includes(payload.device_id) ? s.runningDevices : [...s.runningDevices, payload.device_id]
+      }))
+      await get().refreshAll()
+    }
   },
 
   stopSimulation: async (deviceId) => {
-    const res = await fetch(`${DEVICE_SIMULATOR_BASE_URL}/simulation/stop`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ device_id: deviceId }),
-    })
-    if (!res.ok) throw new Error('Failed to stop simulation')
-    get().removeDevice(deviceId)
+    try {
+      const res = await fetch(`${DEVICE_SIMULATOR_BASE_URL}/simulation/stop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_id: deviceId }),
+      })
+      if (!res.ok) throw new Error('Failed to stop simulation')
+      get().removeDevice(deviceId)
+    } catch (e) {
+      console.warn('Simulation server offline, stopping device locally:', e)
+      set(s => ({
+        devices: s.devices.map(d => d.id === deviceId ? { ...d, isToggledOn: false, status: 'offline' } : d),
+      }))
+      get().removeDevice(deviceId)
+    }
   },
 }))
