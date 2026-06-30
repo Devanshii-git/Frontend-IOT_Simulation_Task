@@ -46,12 +46,12 @@ const defaultFilters: DeviceFilters = { type: 'all', status: 'all', location: ''
 
 const mapDeviceTypeName = (name: string): DeviceType => {
   const lower = name.toLowerCase()
-  if (lower.includes('temp') || lower.includes('thermostat')) return 'temperature'
-  if (lower.includes('humid')) return 'humidity'
-  if (lower.includes('motion')) return 'motion'
-  if (lower.includes('plug') || lower.includes('light') || lower.includes('smart-plug')) return 'smart-plug'
-  if (lower.includes('cctv') || lower.includes('camera')) return 'cctv'
-  return 'custom'
+  if (lower.includes('temp') || lower.includes('thermostat')) return 'temperature_sensor'
+  if (lower.includes('projector')) return 'projector'
+  if (lower.includes('camera') || lower.includes('cctv')) return 'camera'
+  if (lower.includes('mic')) return 'microphone'
+  if (lower.includes('speaker') || lower.includes('audio')) return 'speaker'
+  return 'temperature_sensor'
 }
 
 const getOrCreateUser = async (): Promise<string> => {
@@ -98,11 +98,11 @@ const getOrCreateDeviceType = async (type: string): Promise<string> => {
     const res = await fetch(`${rootUrl}/device-types`)
     if (res.ok) {
       const list = await res.json()
-      let searchName = 'Smart Thermostat'
-      if (type === 'smart-plug') searchName = 'Smart Light'
-      else if (type === 'humidity') searchName = 'Humidity Sensor'
-      else if (type === 'motion') searchName = 'Motion Sensor'
-      else if (type === 'cctv') searchName = 'CCTV Camera'
+      let searchName = 'Temperature Sensor'
+      if (type === 'projector') searchName = 'Projector'
+      else if (type === 'camera') searchName = 'Camera'
+      else if (type === 'microphone') searchName = 'Microphone'
+      else if (type === 'speaker') searchName = 'Speaker'
       
       const found = list.find((dt: any) => 
         dt.name.toLowerCase().includes(type.toLowerCase()) || 
@@ -112,8 +112,11 @@ const getOrCreateDeviceType = async (type: string): Promise<string> => {
       if (list.length > 0) return list[0].id
     }
     // Create new
-    let dtName = 'Smart Thermostat'
-    if (type === 'smart-plug') dtName = 'Smart Light'
+    let dtName = 'Temperature Sensor'
+    if (type === 'projector') dtName = 'Projector'
+    else if (type === 'camera') dtName = 'Camera'
+    else if (type === 'microphone') dtName = 'Microphone'
+    else if (type === 'speaker') dtName = 'Speaker'
     const createRes = await fetch(`${rootUrl}/device-types`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -213,7 +216,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       }
 
       const mappedDevices: Device[] = rawDevices.map((d: any) => {
-        const typeName = typesMap.get(d.device_type_id) ?? 'custom'
+        const typeName = typesMap.get(d.device_type_id) ?? 'temperature_sensor'
         const protoName = protosMap.get(d.protocol_id) ?? 'HTTP'
         const properties = configsMap.get(d.id) ?? {}
 
@@ -293,11 +296,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
 
     try {
       if (isToggledOn) {
-        // Map frontend DeviceType to simulator expectations:
-        // 'temperature' -> 'temperature_sensor', plug -> 'speaker' etc.
-        let simType: SimulatorDeviceType = 'temperature_sensor'
-        if (device.type === 'smart-plug') simType = 'speaker'
-        else if (device.type === 'cctv') simType = 'camera'
+        const simType: SimulatorDeviceType = device.type
 
         await get().startSimulation({
           device_id: id,

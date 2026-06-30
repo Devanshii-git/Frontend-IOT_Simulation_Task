@@ -135,7 +135,7 @@ export function DashboardPage() {
           animate="show"
           className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
         >
-          {(Object.entries(deviceTypeConfig) as [keyof typeof deviceTypeConfig, typeof deviceTypeConfig.temperature][]).map(([type, cfg]) => {
+          {(Object.entries(deviceTypeConfig) as [keyof typeof deviceTypeConfig, typeof deviceTypeConfig.temperature_sensor][]).map(([type, cfg]) => {
             const count = devices.filter((d) => d.type === type).length
             const Icon = cfg.icon
             return (

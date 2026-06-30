@@ -17,12 +17,11 @@ export interface LatestTelemetry {
 }
 
 export type DeviceType =
-  | 'temperature'
-  | 'humidity'
-  | 'motion'
-  | 'smart-plug'
-  | 'cctv'
-  | 'custom'
+  | 'projector'
+  | 'camera'
+  | 'microphone'
+  | 'speaker'
+  | 'temperature_sensor'
 
 export type DeviceStatus = 'online' | 'offline' | 'warning'
 

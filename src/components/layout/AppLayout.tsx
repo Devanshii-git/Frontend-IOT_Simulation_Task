@@ -37,7 +37,7 @@ export function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCo
     <aside
       className={cn(
         'hidden md:flex flex-col border-r border-border bg-bg-surface transition-all duration-300 relative',
-        collapsed ? 'w-16' : 'w-60',
+        collapsed ? 'w-17' : 'w-60',
         'h-[calc(100vh-64px)] sticky top-16',
       )}
     >
@@ -115,7 +115,7 @@ export function TopNav() {
   return (
     <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-border/40 bg-bg-surface/60 px-4 backdrop-blur-lg">
       <Link to="/" className="items-center gap-2.5 shrink-0 flex flex-row justify-start group cursor-pointer">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent group-hover:scale-[1.03] transition-transform">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent group-hover:scale-[1.03] transition-transform">
           <Cpu className="h-5 w-5 text-white" />
         </div>
         <span className="hidden font-bold tracking-tight text-lg text-text-primary sm:inline">AlignAV</span>
@@ -219,9 +219,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       <TopNav />
-      <div className="flex flex-1 z-10 relative">
+      <div className="flex flex-1 min-h-0 z-10 relative">
         <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-        <main className="flex-1 p-4 pb-20 md:pb-6 lg:p-8">
+        <main className="flex-1 min-h-0 h-[calc(100vh-4rem)] overflow-y-auto p-4 pb-20 md:pb-6 lg:p-8">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

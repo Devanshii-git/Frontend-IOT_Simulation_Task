@@ -11,7 +11,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ label, error, options, className, id, ...props }, ref) => {
     const selectId = id ?? label?.toLowerCase().replace(/\s/g, '-')
     return (
-      <div className="flex flex-col gap-1.5 w-full">
+      <div className="flex flex-col gap-1.5">
         {label && (
           <label
             htmlFor={selectId}

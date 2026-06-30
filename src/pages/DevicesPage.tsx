@@ -65,7 +65,7 @@ export function DevicesPage() {
   
   const [form, setForm] = useState({
     name: '',
-    type: 'temperature' as DeviceType,
+    type: 'temperature_sensor' as DeviceType,
     location: '',
     ipAddress: '',
     protocol: 'MQTT' as DeviceProtocol,
@@ -103,7 +103,7 @@ export function DevicesPage() {
       setShowAdd(false)
       setForm({
         name: '',
-        type: 'temperature',
+        type: 'temperature_sensor',
         location: '',
         ipAddress: '',
         protocol: 'MQTT',
@@ -177,7 +177,7 @@ export function DevicesPage() {
             ]}
             value={filters.status}
             onChange={(e) => setFilters({ status: e.target.value as typeof filters.status })}
-            className="w-32 h-10"
+            className="w-36 h-10"
           />
           <Select
             options={[{ value: '', label: 'All Locations' }, ...locations.map((l) => ({ value: l, label: l }))]}
@@ -203,9 +203,9 @@ export function DevicesPage() {
         </div>
       ) : filtered.length === 0 ? (
         <Card className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bg-elevated text-text-muted">
+          {/* <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bg-elevated text-text-muted">
             <Search className="h-6 w-6" />
-          </div>
+          </div> */}
           <h3 className="mt-4 font-bold text-text-primary">No devices found</h3>
           <p className="mt-1 text-sm text-text-muted font-medium">Try adjusting your filters or add a new device.</p>
           <div className="mt-6 flex gap-3">
@@ -225,7 +225,7 @@ export function DevicesPage() {
           className={cn(view === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'space-y-3')}
         >
           {filtered.map((device) => {
-            const cfg = deviceTypeConfig[device.type] || deviceTypeConfig.custom
+            const cfg = deviceTypeConfig[device.type] || deviceTypeConfig.temperature_sensor
             const Icon = cfg.icon
             return (
               <motion.div key={device.id} variants={itemVariants}>
