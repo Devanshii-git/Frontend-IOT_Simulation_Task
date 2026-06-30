@@ -1,11 +1,12 @@
 import { create } from 'zustand'
-import type { SimulationConfig, SimulationPreset } from '@/types'
+import type { SimulationConfig, SimulationPreset, TelemetryPoint } from '@/types'
 import { applyPresetWaveform } from '@/utils/waveforms'
 
 interface SimulationState {
   config: SimulationConfig
   tick: number
   log: string[]
+  telemetryBuffers: Record<string, TelemetryPoint[]>
   intervalId: ReturnType<typeof setInterval> | null
   setConfig: (partial: Partial<SimulationConfig>) => void
   applyPreset: (preset: SimulationPreset) => void
@@ -26,6 +27,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   config: { ...defaultConfig },
   tick: 0,
   log: [],
+  telemetryBuffers: {},
   intervalId: null,
 
   setConfig: (partial) => set((s) => ({ config: { ...s.config, ...partial } })),
@@ -52,3 +54,4 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     set((s) => ({ intervalId: null, config: { ...s.config, running: false } }))
   },
 }))
+

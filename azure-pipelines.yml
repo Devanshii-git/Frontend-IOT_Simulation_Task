@@ -5,7 +5,7 @@ trigger:
   branches:
     include:
       - main
-      - develop
+      - test-(Vansh)
 
 pool:
   vmImage: 'ubuntu-latest'

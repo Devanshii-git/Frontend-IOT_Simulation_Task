@@ -202,7 +202,7 @@ export function SimulationPage() {
       )}
 
       {runningDevices.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl bg-white p-12 shadow text-center">
+        <div className="flex flex-col items-center justify-center rounded-xl bg-bg-surface p-12 shadow text-center">
           <p className="text-text-muted font-medium">
             No devices running. Go to{' '}
             <Link to="/devices?add=true" className="text-accent font-semibold hover:underline">Add Device</Link>{' '}
@@ -223,7 +223,7 @@ export function SimulationPage() {
                 tabIndex={0}
                 onClick={() => setSelectedDeviceId(deviceId)}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedDeviceId(deviceId) }}
-                className={cn('rounded-xl bg-white p-5 shadow cursor-pointer transition-all', isSelected && 'ring-2 ring-accent')}
+                className={cn('rounded-xl bg-bg-surface p-5 shadow cursor-pointer transition-all', isSelected && 'ring-2 ring-accent')}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -260,7 +260,7 @@ export function SimulationPage() {
       )}
 
       {selectedDeviceId && (
-        <div className="rounded-xl bg-white p-6 shadow space-y-4">
+        <div className="rounded-xl bg-bg-surface p-6 shadow space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-lg font-bold text-text-primary">Telemetry — {selectedDeviceId}</h2>
             <div className="flex flex-wrap gap-2">

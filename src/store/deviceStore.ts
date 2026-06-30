@@ -55,13 +55,17 @@ const mapDeviceTypeName = (name: string): DeviceType => {
 }
 
 const getOrCreateUser = async (): Promise<string> => {
+  const currentUser = useAuthStore.getState().user
+  if (currentUser?.id) {
+    return currentUser.id
+  }
   const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
   try {
     const res = await fetch(`${rootUrl}/users`)
     if (res.ok) {
       const users = await res.json()
       if (users && users.length > 0) {
-        // Try to match email of currently logged-in mock user, or return first
+        // Try to match email of currently logged-in user, or return first
         const currentEmail = useAuthStore.getState().user?.email
         const found = users.find((u: any) => u.email === currentEmail)
         return found ? found.id : users[0].id
@@ -192,9 +196,9 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       const protocols = protosRes.ok ? await protosRes.json() : []
       const configurations = configsRes.ok ? await configsRes.json() : []
 
-      const typesMap = new Map(deviceTypes.map((t: any) => [t.id, t.name]))
-      const protosMap = new Map(protocols.map((p: any) => [p.id, p.name]))
-      const configsMap = new Map(configurations.map((c: any) => [c.device_id, c.properties]))
+      const typesMap = new Map<string, string>(deviceTypes.map((t: any) => [t.id, t.name]))
+      const protosMap = new Map<string, string>(protocols.map((p: any) => [p.id, p.name]))
+      const configsMap = new Map<string, Record<string, any>>(configurations.map((c: any) => [c.device_id, c.properties]))
 
       // Read running simulations to set the isToggledOn flag
       let activeRunning: string[] = []

@@ -46,7 +46,16 @@ export function LoginPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [apiError, setApiError] = useState('')
   const [loading, setLoading] = useState(false)
+  
+  // Social login state
+  const [showGoogleOAuth, setShowGoogleOAuth] = useState(false)
+  const [showGithubOAuth, setShowGithubOAuth] = useState(false)
+  const [customName, setCustomName] = useState('')
+  const [customEmail, setCustomEmail] = useState('')
+
   const login = useAuthStore((s) => s.login)
+  const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle)
+  const loginWithGithub = useAuthStore((s) => s.loginWithGithub)
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,6 +77,28 @@ export function LoginPage() {
       setApiError(err instanceof Error ? err.message : 'Login failed')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSocialLogin = async (provider: 'Google' | 'GitHub', name: string, email: string) => {
+    setLoading(true)
+    setApiError('')
+    setShowGoogleOAuth(false)
+    setShowGithubOAuth(false)
+    try {
+      const mockToken = `mock-${provider.toLowerCase()}-token-${Date.now()}`
+      if (provider === 'Google') {
+        await loginWithGoogle(name, email, mockToken)
+      } else {
+        await loginWithGithub(name, email, mockToken)
+      }
+      navigate('/')
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : `${provider} sign in failed`)
+    } finally {
+      setLoading(false)
+      setCustomName('')
+      setCustomEmail('')
     }
   }
 
@@ -220,10 +251,20 @@ export function LoginPage() {
           </motion.div>
 
           <motion.div variants={itemVariants} className="grid grid-cols-2 gap-3">
-            <Button variant="outline" type="button" className="h-10 text-xs bg-white/5 hover:bg-white/10 transition-colors border-white/15 shadow-sm text-white">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => setShowGoogleOAuth(true)}
+              className="h-10 text-xs bg-white/5 hover:bg-white/10 transition-colors border-white/15 shadow-sm text-white cursor-pointer"
+            >
               <Globe className="h-4 w-4 text-white/70 mr-1.5" /> Google
             </Button>
-            <Button variant="outline" type="button" className="h-10 text-xs bg-white/5 hover:bg-white/10 transition-colors border-white/15 shadow-sm text-white">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => setShowGithubOAuth(true)}
+              className="h-10 text-xs bg-white/5 hover:bg-white/10 transition-colors border-white/15 shadow-sm text-white cursor-pointer"
+            >
               <Cpu className="h-4 w-4 text-white/70 mr-1.5" /> GitHub
             </Button>
           </motion.div>
@@ -239,6 +280,152 @@ export function LoginPage() {
           </motion.p>
         </motion.div>
       </div>
+
+      {/* Google OAuth Modal */}
+      {showGoogleOAuth && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md px-4">
+          <motion.div 
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-sm bg-[#0f1222] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4 text-white"
+          >
+            <div className="flex items-center gap-2 text-white">
+              <Globe className="h-6 w-6 text-accent animate-pulse" />
+              <h3 className="text-lg font-bold">Sign in with Google</h3>
+            </div>
+            <p className="text-xs text-white/60">Choose an account to continue to AlignAV</p>
+            
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => handleSocialLogin('Google', 'Alex Rivera', 'alex@iotlab.dev')}
+                className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/15 transition-all text-left text-sm cursor-pointer"
+              >
+                <div className="h-8 w-8 rounded-full bg-accent/20 flex items-center justify-center font-bold text-accent">A</div>
+                <div>
+                  <p className="font-semibold">Alex Rivera</p>
+                  <p className="text-xs text-white/40">alex@iotlab.dev</p>
+                </div>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => handleSocialLogin('Google', 'Demo User', 'demo@iotlab.dev')}
+                className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/15 transition-all text-left text-sm cursor-pointer"
+              >
+                <div className="h-8 w-8 rounded-full bg-accent/20 flex items-center justify-center font-bold text-accent">D</div>
+                <div>
+                  <p className="font-semibold">Demo User</p>
+                  <p className="text-xs text-white/40">demo@iotlab.dev</p>
+                </div>
+              </button>
+            </div>
+
+            <div className="border-t border-white/10 pt-3">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/60 block">Or use a custom account</label>
+                <input
+                  type="text"
+                  placeholder="Full Name"
+                  value={customName}
+                  onChange={(e) => setCustomName(e.target.value)}
+                  className="w-full h-9 rounded-lg bg-white/5 border border-white/10 px-3 text-xs text-white focus:outline-none focus:border-accent"
+                />
+                <input
+                  type="email"
+                  placeholder="Email Address"
+                  value={customEmail}
+                  onChange={(e) => setCustomEmail(e.target.value)}
+                  className="w-full h-9 rounded-lg bg-white/5 border border-white/10 px-3 text-xs text-white focus:outline-none focus:border-accent"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleSocialLogin('Google', customName, customEmail)}
+                  disabled={!customName || !customEmail}
+                  className="w-full h-9 rounded-lg bg-accent text-white font-semibold text-xs hover:bg-accent-hover disabled:opacity-40 transition-colors cursor-pointer"
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => { setShowGoogleOAuth(false); setCustomName(''); setCustomEmail(''); }}
+              className="w-full text-center text-xs text-white/40 hover:text-white/60 transition-colors mt-2 cursor-pointer"
+            >
+              Cancel
+            </button>
+          </motion.div>
+        </div>
+      )}
+
+      {/* GitHub OAuth Modal */}
+      {showGithubOAuth && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md px-4">
+          <motion.div 
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-sm bg-[#0f1222] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4 text-white"
+          >
+            <div className="flex items-center gap-2 text-white">
+              <Cpu className="h-6 w-6 text-accent animate-pulse" />
+              <h3 className="text-lg font-bold">Sign in with GitHub</h3>
+            </div>
+            <p className="text-xs text-white/60">Authorize AlignAV to access your GitHub account</p>
+            
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => handleSocialLogin('GitHub', 'Alex Rivera', 'alex-rivera@github.com')}
+                className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/15 transition-all text-left text-sm cursor-pointer"
+              >
+                <div className="h-8 w-8 rounded-full bg-accent/20 flex items-center justify-center font-bold text-accent">A</div>
+                <div>
+                  <p className="font-semibold">alex-rivera</p>
+                  <p className="text-xs text-white/40">alex-rivera@github.com</p>
+                </div>
+              </button>
+            </div>
+
+            <div className="border-t border-white/10 pt-3">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/60 block">Or use a custom account</label>
+                <input
+                  type="text"
+                  placeholder="GitHub Username"
+                  value={customName}
+                  onChange={(e) => setCustomName(e.target.value)}
+                  className="w-full h-9 rounded-lg bg-white/5 border border-white/10 px-3 text-xs text-white focus:outline-none focus:border-accent"
+                />
+                <input
+                  type="email"
+                  placeholder="Primary Email Address"
+                  value={customEmail}
+                  onChange={(e) => setCustomEmail(e.target.value)}
+                  className="w-full h-9 rounded-lg bg-white/5 border border-white/10 px-3 text-xs text-white focus:outline-none focus:border-accent"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleSocialLogin('GitHub', customName, customEmail)}
+                  disabled={!customName || !customEmail}
+                  className="w-full h-9 rounded-lg bg-accent text-white font-semibold text-xs hover:bg-accent-hover disabled:opacity-40 transition-colors cursor-pointer"
+                >
+                  Authorize AlignAV
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => { setShowGithubOAuth(false); setCustomName(''); setCustomEmail(''); }}
+              className="w-full text-center text-xs text-white/40 hover:text-white/60 transition-colors mt-2 cursor-pointer"
+            >
+              Cancel
+            </button>
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }
