@@ -42,7 +42,6 @@ export function DashboardPage() {
   const navigate = useNavigate()
   const devices = useDeviceStore((s) => s.devices)
   const loading = useDeviceStore((s) => s.loading)
-  const fetchDevices = useDeviceStore((s) => s.fetchDevices)
   const setFilters = useDeviceStore((s) => s.setFilters)
   const alerts = useAlertStore((s) => s.alerts)
   const fetchAlerts = useAlertStore((s) => s.fetchAlerts)

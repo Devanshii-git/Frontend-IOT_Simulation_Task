@@ -201,7 +201,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <GlobalSpotlight glowColor="132, 0, 255" spotlightRadius={400} />
 
       {/* LightRays background */}
-      <div className="absolute inset-0 z-0 pointer-events-none opacity-40 dark:opacity-15">
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-40 dark:opacity-15">
         <LightRays
           raysOrigin="top-center"
           raysColor="#ffffff"
