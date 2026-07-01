@@ -65,7 +65,7 @@ export function DevicesPage() {
   
   const [form, setForm] = useState({
     name: '',
-    type: 'temperature' as DeviceType,
+    type: 'temperature_sensor' as DeviceType,
     location: '',
     ipAddress: '',
     protocol: 'MQTT' as DeviceProtocol,
@@ -107,7 +107,7 @@ export function DevicesPage() {
       setShowAdd(false)
       setForm({
         name: '',
-        type: 'temperature',
+        type: 'temperature_sensor',
         location: '',
         ipAddress: '',
         protocol: 'MQTT',
@@ -155,8 +155,8 @@ export function DevicesPage() {
       </div>
 
       {/* Filter and View Controls bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1 group">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center w-full">
+        <div className="relative flex-1 lg:max-w-md group">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted group-focus-within:text-accent transition-colors" />
           <input
             placeholder="Search devices..."
@@ -165,12 +165,12 @@ export function DevicesPage() {
             className="h-10 w-full rounded-md border border-border bg-bg-surface pl-10 pr-4 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-subtle/40 focus:border-border-accent placeholder:text-text-muted transition-all"
           />
         </div>
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex flex-wrap md:flex-nowrap gap-2 items-center flex-1 w-full">
           <Select
             options={[{ value: 'all', label: 'All Types' }, ...deviceTypeOptions]}
             value={filters.type}
             onChange={(e) => setFilters({ type: e.target.value as DeviceType | 'all' })}
-            className="w-36 h-10"
+            className="flex-1 min-w-[120px] h-10"
           />
           <Select
             options={[
@@ -181,15 +181,15 @@ export function DevicesPage() {
             ]}
             value={filters.status}
             onChange={(e) => setFilters({ status: e.target.value as typeof filters.status })}
-            className="w-32 h-10"
+            className="flex-1 min-w-[120px] h-10"
           />
           <Select
             options={[{ value: '', label: 'All Locations' }, ...locations.map((l) => ({ value: l, label: l }))]}
             value={filters.location}
             onChange={(e) => setFilters({ location: e.target.value })}
-            className="w-36 h-10"
+            className="flex-1 min-w-[120px] h-10"
           />
-          <div className="flex gap-1 border border-border rounded-md p-1 bg-bg-primary h-10">
+          <div className="flex gap-1 border border-border rounded-md p-1 bg-bg-primary h-10 shrink-0">
             <Button variant={view === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 min-h-[32px] min-w-[32px]" onClick={() => setView('grid')}>
               <LayoutGrid className="h-4 w-4" />
             </Button>
@@ -229,7 +229,7 @@ export function DevicesPage() {
           className={cn(view === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'space-y-3')}
         >
           {filtered.map((device) => {
-            const cfg = deviceTypeConfig[device.type] || deviceTypeConfig.custom
+            const cfg = deviceTypeConfig[device.type] || deviceTypeConfig.temperature_sensor
             const Icon = cfg.icon
             return (
               <motion.div key={device.id} variants={itemVariants}>

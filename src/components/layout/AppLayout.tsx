@@ -38,44 +38,46 @@ export function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCo
       className={cn(
         'hidden md:flex flex-col border-r border-border bg-bg-surface transition-all duration-300 relative',
         collapsed ? 'w-16' : 'w-60',
-        'h-[calc(100vh-64px)] sticky top-16',
+        'min-h-[calc(100vh-64px)]',
       )}
     >
-      <nav className="flex flex-col gap-1.5 p-3 flex-1">
-        {navItems.map(({ to, icon: Icon, label }) => {
-          const active = location.pathname === to
-          return (
-            <Link
-              key={to}
-              to={to}
-              title={label}
-              className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all group min-h-[40px] cursor-pointer',
-                active
-                  ? 'bg-accent text-white shadow-sm shadow-accent/10'
-                  : 'text-text-muted hover:bg-bg-elevated hover:text-text-primary',
-              )}
-            >
-              <Icon className={cn('h-5 w-5 shrink-0 transition-transform group-hover:scale-105', active ? 'text-white' : 'text-text-muted')} />
-              {!collapsed && <span className="truncate">{label}</span>}
-              {!collapsed && to === '/alerts' && alertCount > 0 && (
-                <span className={cn("ml-auto rounded-full px-2 py-0.5 text-xs font-semibold animate-pulse", active ? "bg-white text-accent" : "bg-status-error text-white")}>
-                  {alertCount}
-                </span>
-              )}
-            </Link>
-          )
-        })}
-      </nav>
+      <div className="flex flex-col flex-1 p-3 sticky top-16 h-[calc(100vh-64px)] relative">
+        <nav className="flex flex-col gap-1.5 flex-1">
+          {navItems.map(({ to, icon: Icon, label }) => {
+            const active = location.pathname === to
+            return (
+              <Link
+                key={to}
+                to={to}
+                title={label}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all group min-h-[40px] cursor-pointer',
+                  active
+                    ? 'bg-accent text-white shadow-sm shadow-accent/10'
+                    : 'text-text-muted hover:bg-bg-elevated hover:text-text-primary',
+                )}
+              >
+                <Icon className={cn('h-5 w-5 shrink-0 transition-transform group-hover:scale-105', active ? 'text-white' : 'text-text-muted')} />
+                {!collapsed && <span className="truncate">{label}</span>}
+                {!collapsed && to === '/alerts' && alertCount > 0 && (
+                  <span className={cn("ml-auto rounded-full px-2 py-0.5 text-xs font-semibold animate-pulse", active ? "bg-white text-accent" : "bg-status-error text-white")}>
+                    {alertCount}
+                  </span>
+                )}
+              </Link>
+            )
+          })}
+        </nav>
 
-      {setCollapsed && (
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="absolute right-[-14px] top-4 z-40 hidden md:flex h-7 w-7 items-center justify-center rounded-full border border-border bg-bg-surface shadow-sm text-text-muted hover:text-text-primary cursor-pointer"
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </button>
-      )}
+        {setCollapsed && (
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="absolute right-[-14px] top-4 z-40 hidden md:flex h-7 w-7 items-center justify-center rounded-full border border-border bg-bg-surface shadow-sm text-text-muted hover:text-text-primary cursor-pointer"
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </button>
+        )}
+      </div>
     </aside>
   )
 }

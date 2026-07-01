@@ -46,12 +46,12 @@ const defaultFilters: DeviceFilters = { type: 'all', status: 'all', location: ''
 
 const mapDeviceTypeName = (name: string): DeviceType => {
   const lower = name.toLowerCase()
-  if (lower.includes('temp') || lower.includes('thermostat')) return 'temperature'
-  if (lower.includes('humid')) return 'humidity'
-  if (lower.includes('motion')) return 'motion'
-  if (lower.includes('plug') || lower.includes('light') || lower.includes('smart-plug')) return 'smart-plug'
-  if (lower.includes('cctv') || lower.includes('camera')) return 'cctv'
-  return 'custom'
+  if (lower.includes('temp') || lower.includes('thermostat')) return 'temperature_sensor'
+  if (lower.includes('projector')) return 'projector'
+  if (lower.includes('camera') || lower.includes('cctv')) return 'camera'
+  if (lower.includes('mic')) return 'microphone'
+  if (lower.includes('speaker') || lower.includes('audio')) return 'speaker'
+  return 'temperature_sensor'
 }
 
 const getOrCreateUser = async (): Promise<string> => {
@@ -98,11 +98,11 @@ const getOrCreateDeviceType = async (type: string): Promise<string> => {
     const res = await fetch(`${rootUrl}/device-types`)
     if (res.ok) {
       const list = await res.json()
-      let searchName = 'Smart Thermostat'
-      if (type === 'smart-plug') searchName = 'Smart Light'
-      else if (type === 'humidity') searchName = 'Humidity Sensor'
-      else if (type === 'motion') searchName = 'Motion Sensor'
-      else if (type === 'cctv') searchName = 'CCTV Camera'
+      let searchName = 'Temperature Sensor'
+      if (type === 'projector') searchName = 'Projector'
+      else if (type === 'camera') searchName = 'Camera'
+      else if (type === 'microphone') searchName = 'Microphone'
+      else if (type === 'speaker') searchName = 'Speaker'
       
       const found = list.find((dt: any) => 
         dt.name.toLowerCase().includes(type.toLowerCase()) || 
@@ -112,8 +112,11 @@ const getOrCreateDeviceType = async (type: string): Promise<string> => {
       if (list.length > 0) return list[0].id
     }
     // Create new
-    let dtName = 'Smart Thermostat'
-    if (type === 'smart-plug') dtName = 'Smart Light'
+    let dtName = 'Temperature Sensor'
+    if (type === 'projector') dtName = 'Projector'
+    else if (type === 'camera') dtName = 'Camera'
+    else if (type === 'microphone') dtName = 'Microphone'
+    else if (type === 'speaker') dtName = 'Speaker'
     const createRes = await fetch(`${rootUrl}/device-types`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -165,7 +168,7 @@ const MOCK_DEVICES: Device[] = [
   {
     id: 'device-temp-01',
     name: 'Office Thermostat',
-    type: 'temperature',
+    type: 'temperature_sensor',
     status: 'online',
     location: 'Building A, Floor 2',
     ipAddress: '192.168.1.15',
@@ -177,7 +180,7 @@ const MOCK_DEVICES: Device[] = [
   {
     id: 'device-cam-02',
     name: 'Front Door Camera',
-    type: 'cctv',
+    type: 'camera',
     status: 'online',
     location: 'Main Entrance',
     ipAddress: '192.168.1.24',
@@ -189,7 +192,7 @@ const MOCK_DEVICES: Device[] = [
   {
     id: 'device-spk-03',
     name: 'Conference Room Speaker',
-    type: 'custom',
+    type: 'speaker',
     status: 'offline',
     location: 'Room 404',
     ipAddress: '192.168.1.32',
@@ -201,7 +204,7 @@ const MOCK_DEVICES: Device[] = [
   {
     id: 'device-mic-04',
     name: 'CEO Boardroom Mic',
-    type: 'custom',
+    type: 'microphone',
     status: 'warning',
     location: 'Executive Suite',
     ipAddress: '192.168.1.41',
@@ -280,7 +283,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
           ipAddress: properties.ipAddress ?? '127.0.0.1',
           protocol: (protoName.toUpperCase() === 'MQTT' ? 'MQTT' : (protoName.toUpperCase() === 'WEBSOCKET' ? 'WebSocket' : 'HTTP')) as DeviceProtocol,
           isToggledOn: isRunning,
-          signalStrength: isRunning ? 70 + Math.floor(Math.random() * 25) : 0,
+          signalStrength: 0,
           lastPing: d.updated_at || new Date().toISOString(),
         }
       })
@@ -350,11 +353,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
 
     try {
       if (isToggledOn) {
-        // Map frontend DeviceType to simulator expectations:
-        // 'temperature' -> 'temperature_sensor', plug -> 'speaker' etc.
-        let simType: SimulatorDeviceType = 'temperature_sensor'
-        if (device.type === 'smart-plug') simType = 'speaker'
-        else if (device.type === 'cctv') simType = 'camera'
+        const simType: SimulatorDeviceType = device.type as SimulatorDeviceType
 
         await get().startSimulation({
           device_id: id,
@@ -555,21 +554,17 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
         } catch {
           // Offline fallback: return randomized mock telemetry!
           const device = get().devices.find(d => d.id === deviceId)
-          const devType = device?.type ?? 'temperature'
-          
-          let simType: SimulatorDeviceType = 'temperature_sensor'
-          if (devType === 'cctv') simType = 'camera'
-          else if (devType === 'custom') simType = 'speaker'
-          else if (devType === 'smart-plug') simType = 'projector'
+          const devType = device?.type ?? 'temperature_sensor'
+          const simType: SimulatorDeviceType = devType as SimulatorDeviceType
           
           const mockTelemetry: LatestTelemetry = {
             device_id: deviceId,
             device_type: simType,
-            temperature: simType === 'temperature_sensor' ? 20 + Math.floor(Math.random() * 8) : undefined,
-            battery: 50 + Math.floor(Math.random() * 50),
-            volume: simType === 'speaker' ? 40 + Math.floor(Math.random() * 20) : undefined,
-            brightness: simType === 'projector' ? 70 + Math.floor(Math.random() * 30) : undefined,
-            fps: simType === 'camera' ? 24 + Math.floor(Math.random() * 7) : undefined,
+            temperature: simType === 'temperature_sensor' ? 0 : undefined,
+            battery: 0,
+            volume: simType === 'speaker' ? 0 : undefined,
+            brightness: simType === 'projector' ? 0 : undefined,
+            fps: simType === 'camera' ? 0 : undefined,
             timestamp: new Date().toISOString(),
           }
           return [deviceId, mockTelemetry] as const

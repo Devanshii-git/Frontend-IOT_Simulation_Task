@@ -20,14 +20,13 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             {label}
           </label>
         )}
-        <div className="relative w-full">
+        <div className={cn("relative w-full", className)}>
           <select
             ref={ref}
             id={selectId}
             className={cn(
               'flex h-10 w-full rounded-md border border-border bg-bg-surface px-3 py-2 text-sm text-text-primary shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-subtle/40 focus-visible:border-border-accent disabled:cursor-not-allowed disabled:opacity-50 appearance-none cursor-pointer pr-8',
-              error && 'border-status-error focus-visible:ring-status-error/40',
-              className
+              error && 'border-status-error focus-visible:ring-status-error/40'
             )}
             {...props}
           >

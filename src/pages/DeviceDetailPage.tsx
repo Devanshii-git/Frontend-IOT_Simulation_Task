@@ -125,7 +125,7 @@ export function DeviceDetailPage() {
     )
   }
 
-  const deviceCfg = deviceTypeConfig[device.type] || deviceTypeConfig.custom
+  const deviceCfg = deviceTypeConfig[device.type] || deviceTypeConfig.temperature_sensor
   const Icon = deviceCfg.icon
 
   // Calculate live statistics

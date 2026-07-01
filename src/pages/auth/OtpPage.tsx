@@ -71,7 +71,7 @@ export function OtpPage() {
         />
       </div>
 
-      <div className="w-full max-w-md text-center space-y-6 bg-white/[0.08] dark:bg-white/[0.04] backdrop-blur-xl border border-white/20 dark:border-white/10 p-8 sm:p-10 rounded-3xl shadow-2xl shadow-accent/5 z-10">
+      <div className="w-full max-w-md text-center space-y-6 bg-[rgba(82,39,255,0.08)] dark:bg-[rgba(82,39,255,0.04)] backdrop-blur-xl border border-purple-500/20 p-8 sm:p-10 rounded-3xl shadow-2xl shadow-accent/5 z-10">
         <div className="flex flex-col items-center space-y-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
             <Cpu className="h-5 w-5 text-white" />
