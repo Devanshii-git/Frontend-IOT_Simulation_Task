@@ -101,7 +101,7 @@ export function DeviceDetailPage() {
       telemetryWs.send({ action: 'unsubscribe', deviceId: id })
       unsub()
     }
-  }, [id, device?.status, device?.isToggledOn, telemetryBuffers])
+  }, [id, device, telemetryBuffers])
 
   if (deviceLoading && !device) {
     return (

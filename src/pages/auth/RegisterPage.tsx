@@ -93,7 +93,7 @@ export function RegisterPage() {
           zoom={3}
           backgroundGlow={0.6}
           opacity={1}
-          mouseInteraction
+          mouseInteraction={false}
           mouseStrength={0.6}
           mouseRadius={1.2}
         />
@@ -103,7 +103,7 @@ export function RegisterPage() {
         variants={containerVariants}
         initial="hidden"
         animate="show"
-        className="w-full max-w-md space-y-6 bg-white/[0.08] dark:bg-white/[0.04] backdrop-blur-xl border border-white/20 dark:border-white/10 p-8 sm:p-10 rounded-3xl shadow-2xl shadow-accent/5 z-10 relative"
+        className="w-full max-w-md space-y-6 bg-[rgba(82,39,255,0.08)] dark:bg-[rgba(82,39,255,0.04)] backdrop-blur-xl border border-purple-500/20 p-8 sm:p-10 rounded-3xl shadow-2xl shadow-accent/5 z-10 relative"
       >
         <motion.div variants={itemVariants} className="flex flex-col items-center text-center space-y-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent mb-1 shadow-md shadow-accent/15">

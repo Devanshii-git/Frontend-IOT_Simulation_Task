@@ -119,7 +119,7 @@ export function LoginPage() {
           zoom={3}
           backgroundGlow={0.6}
           opacity={1}
-          mouseInteraction
+          mouseInteraction={false}
           mouseStrength={0.6}
           mouseRadius={1.2}
         />
@@ -141,7 +141,7 @@ export function LoginPage() {
           </span>
         </motion.div>
 
-        <div className="relative z-[2] space-y-4 max-w-lg bg-white/[0.08] dark:bg-white/[0.04] backdrop-blur-xl border border-white/20 dark:border-white/10 p-8 sm:p-10 rounded-3xl shadow-2xl shadow-accent/5">
+        <div className="relative z-[2] space-y-4 max-w-lg bg-[rgba(82,39,255,0.08)] dark:bg-[rgba(82,39,255,0.04)] backdrop-blur-xl border border-purple-500/20 p-8 sm:p-10 rounded-3xl shadow-2xl shadow-accent/5">
           <h2 className="text-4xl font-extrabold text-white tracking-tight leading-tight">
             Comprehensive IoT Device Simulation
           </h2>
@@ -178,7 +178,7 @@ export function LoginPage() {
           variants={containerVariants}
           initial="hidden"
           animate="show"
-          className="mx-auto w-full max-w-md space-y-8 bg-white/[0.08] dark:bg-white/[0.04] backdrop-blur-xl border border-white/20 dark:border-white/10 p-8 sm:p-10 rounded-3xl shadow-2xl shadow-accent/5"
+          className="mx-auto w-full max-w-md space-y-8 bg-[rgba(82,39,255,0.08)] dark:bg-[rgba(82,39,255,0.04)] backdrop-blur-xl border border-purple-500/20 p-8 sm:p-10 rounded-3xl shadow-2xl shadow-accent/5"
         >
           <motion.div variants={itemVariants}>
             <h2 className="text-3xl font-extrabold tracking-tight text-white">
