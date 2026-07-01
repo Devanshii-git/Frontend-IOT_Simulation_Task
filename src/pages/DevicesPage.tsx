@@ -156,7 +156,7 @@ export function DevicesPage() {
 
       {/* Filter and View Controls bar */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center w-full">
-        <div className="relative flex-1 lg:max-w-md group">
+        <div className="relative flex-1 min-w-0 group">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted group-focus-within:text-accent transition-colors" />
           <input
             placeholder="Search devices..."
@@ -181,13 +181,13 @@ export function DevicesPage() {
             ]}
             value={filters.status}
             onChange={(e) => setFilters({ status: e.target.value as typeof filters.status })}
-            className="w-36 h-10"
+            className="flex-1 min-w-[120px] h-10"
           />
           <Select
             options={[{ value: '', label: 'All Locations' }, ...locations.map((l) => ({ value: l, label: l }))]}
             value={filters.location}
             onChange={(e) => setFilters({ location: e.target.value })}
-            className="flex-1 min-w-[120px] h-10"
+            className="flex-1 min-w-[132px] h-10"
           />
           <div className="flex gap-1 border border-border rounded-md p-1 bg-bg-primary h-10 shrink-0">
             <Button variant={view === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 min-h-[32px] min-w-[32px]" onClick={() => setView('grid')}>
