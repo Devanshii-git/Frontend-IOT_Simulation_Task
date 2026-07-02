@@ -27,7 +27,7 @@ steps:
   displayName: 'Run Dependency Scan (npm audit)'
   continueOnError: true
 
-- task: SonarQubePrepare@5
+- task: SonarQubePrepare@6
   inputs:
     SonarQube: 'SonarQube'
     scannerMode: 'CLI'
@@ -47,10 +47,10 @@ steps:
   displayName: 'Run Build (TypeScript compiler & Vite)'
   continueOnError: false
 
-- task: SonarQubeAnalyze@5
+- task: SonarQubeAnalyze@6
   displayName: 'Run SonarQube Analysis'
 
-- task: SonarQubePublish@5
+- task: SonarQubePublish@6
   inputs:
     pollingTimeoutSec: '300'
   displayName: 'Publish SonarQube Quality Gate Result'
