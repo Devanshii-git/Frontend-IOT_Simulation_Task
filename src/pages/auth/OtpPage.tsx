@@ -12,6 +12,7 @@ export function OtpPage() {
   const [resendTimer, setResendTimer] = useState(60)
   const inputs = useRef<(HTMLInputElement | null)[]>([])
   const verifyOtp = useAuthStore((s) => s.verifyOtp)
+  const resendOtp = useAuthStore((s) => s.resendOtp)
   const pendingEmail = useAuthStore((s) => s.pendingEmail)
   const navigate = useNavigate()
 
@@ -48,6 +49,17 @@ export function OtpPage() {
       setError(err instanceof Error ? err.message : 'Verification failed')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleResend = async () => {
+    if (!pendingEmail) return
+    setError('')
+    try {
+      await resendOtp(pendingEmail)
+      setResendTimer(60)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to resend code')
     }
   }
 
@@ -113,7 +125,7 @@ export function OtpPage() {
           {resendTimer > 0 ? (
             <>Resend code in <strong className="text-white">{resendTimer}s</strong></>
           ) : (
-            <button className="font-semibold text-accent hover:text-accent-hover cursor-pointer" onClick={() => setResendTimer(60)}>
+            <button className="font-semibold text-accent hover:text-accent-hover cursor-pointer" onClick={handleResend}>
               Resend code
             </button>
           )}
