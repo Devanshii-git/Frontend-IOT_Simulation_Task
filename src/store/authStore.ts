@@ -21,17 +21,40 @@ interface AuthState {
   setPendingEmail: (email: string) => void
 }
 
+const getInitialAuth = () => {
+  try {
+    const stored = localStorage.getItem('iot-auth')
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      return {
+        user: parsed.state?.user ?? null,
+        token: parsed.state?.token ?? null,
+        isAuthenticated: parsed.state?.isAuthenticated ?? false,
+        splashDone: parsed.state?.splashDone ?? false,
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to parse initial auth state:', e)
+  }
+  return {
+    user: null,
+    token: null,
+    isAuthenticated: false,
+    splashDone: false,
+  }
+}
+
+const initialAuth = getInitialAuth()
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
-      user: null,
-      token: null,
-      isAuthenticated: false,
+      ...initialAuth,
       pendingEmail: null,
       pendingName: null,
       pendingPassword: null,
-      splashDone: false,
       login: async (email, password) => {
+
         const res = await loginApi(email, password)
         set({ user: res.user, token: res.token, isAuthenticated: true })
       },
