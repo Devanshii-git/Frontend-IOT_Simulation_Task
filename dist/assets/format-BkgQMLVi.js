@@ -1,0 +1,1 @@
+function e(e){let t=Date.now()-new Date(e).getTime(),n=Math.floor(t/1e3);if(n<60)return`${n}s ago`;let r=Math.floor(n/60);if(r<60)return`${r} min${r>1?`s`:``} ago`;let i=Math.floor(r/60);if(i<24)return`${i} hour${i>1?`s`:``} ago`;let a=Math.floor(i/24);return`${a} day${a>1?`s`:``} ago`}export{e as t};
