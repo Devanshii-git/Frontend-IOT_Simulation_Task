@@ -92,9 +92,6 @@ export function OtpPage() {
           <p className="text-sm text-white/60 font-medium">
             We sent a 6-digit code to <strong className="text-white">{pendingEmail ?? 'your email'}</strong>
           </p>
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/70">
-            Hint: use code 123456
-          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -113,9 +110,9 @@ export function OtpPage() {
               />
             ))}
           </div>
-          
+
           {error && <p className="text-sm font-medium text-status-error">{error}</p>}
-          
+
           <Button type="submit" className="w-full h-11 shadow-md shadow-accent/15" loading={loading}>
             Verify
           </Button>
