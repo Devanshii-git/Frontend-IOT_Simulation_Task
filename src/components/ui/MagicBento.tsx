@@ -288,6 +288,11 @@ export const ParticleCard = React.forwardRef<
       }
 
       const handleMouseClick = (e: MouseEvent) => {
+        const target = e.target as HTMLElement
+        if (target.closest('button') || target.closest('label') || target.closest('input') || target.closest('.switch-root')) {
+          return
+        }
+
         if (onClick) {
           onClick(e as unknown as React.MouseEvent<HTMLDivElement>)
         }

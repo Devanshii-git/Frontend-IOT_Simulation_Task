@@ -42,6 +42,7 @@ export function DeviceDetailPage() {
 
   const [form, setForm] = useState({ name: '', location: '', ipAddress: '', protocol: 'MQTT' as DeviceProtocol })
   const [updating, setUpdating] = useState(false)
+  const [toggling, setToggling] = useState(false)
   const [liveData, setLiveData] = useState<TelemetryPoint[]>([])
 
   // Rule creation state
@@ -151,6 +152,17 @@ export function DeviceDetailPage() {
     }
   }
 
+  const handleToggle = async (id: string, checked: boolean) => {
+    setToggling(true)
+    try {
+      await toggleDevice(id, checked)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setToggling(false)
+    }
+  }
+
   const handleDeleteDevice = async () => {
     if (window.confirm(`Are you sure you want to delete ${device.name}?`)) {
       await deleteDevice(device.id)
@@ -221,8 +233,9 @@ export function DeviceDetailPage() {
             <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Power State</span>
             <Switch
               checked={device.isToggledOn}
-              onChange={(v) => toggleDevice(device.id, v)}
+              onChange={(v) => handleToggle(device.id, v)}
               label={device.isToggledOn ? 'ACTIVE' : 'STANDBY'}
+              loading={toggling}
             />
           </div>
           <Button

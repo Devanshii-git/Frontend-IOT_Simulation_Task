@@ -73,6 +73,7 @@ export function DevicesPage() {
 
   const [adding, setAdding] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [togglingId, setTogglingId] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
 
   useEffect(() => {
@@ -133,10 +134,13 @@ export function DevicesPage() {
   }
 
   const handleToggle = async (id: string, checked: boolean) => {
+    setTogglingId(id)
     try {
       await toggleDevice(id, checked)
     } catch (err) {
       console.error(err)
+    } finally {
+      setTogglingId(null)
     }
   }
 
@@ -274,6 +278,7 @@ export function DevicesPage() {
                       checked={device.isToggledOn}
                       onChange={(v) => handleToggle(device.id, v)}
                       label={device.isToggledOn ? 'ACTIVE' : 'STANDBY'}
+                      loading={togglingId === device.id}
                     />
                     <Button
                       variant="ghost"
