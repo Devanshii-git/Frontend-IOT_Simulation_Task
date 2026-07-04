@@ -365,9 +365,6 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
     } catch (e) {
       console.error('Error toggling device simulation', e)
     }
-
-    // Refresh devices list to fetch statuses
-    await get().fetchDevices()
   },
 
   updateDeviceDetails: async (id, payload) => {
@@ -599,14 +596,18 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
         body: JSON.stringify(payload),
       })
       if (!res.ok) throw new Error('Failed to start simulation.')
-      await get().refreshAll()
+      set(s => ({
+        devices: s.devices.map(d => d.id === payload.device_id ? { ...d, isToggledOn: true, status: 'online' } : d),
+        runningDevices: s.runningDevices.includes(payload.device_id) ? s.runningDevices : [...s.runningDevices, payload.device_id]
+      }))
+      await get().fetchTelemetryForDevices([payload.device_id])
     } catch (e) {
       console.warn('Simulation server offline, toggling device locally:', e)
       set(s => ({
         devices: s.devices.map(d => d.id === payload.device_id ? { ...d, isToggledOn: true, status: 'online' } : d),
         runningDevices: s.runningDevices.includes(payload.device_id) ? s.runningDevices : [...s.runningDevices, payload.device_id]
       }))
-      await get().refreshAll()
+      await get().fetchTelemetryForDevices([payload.device_id])
     }
   },
 
@@ -618,6 +619,9 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
         body: JSON.stringify({ device_id: deviceId }),
       })
       if (!res.ok) throw new Error('Failed to stop simulation')
+      set(s => ({
+        devices: s.devices.map(d => d.id === deviceId ? { ...d, isToggledOn: false, status: 'offline' } : d),
+      }))
       get().removeDevice(deviceId)
     } catch (e) {
       console.warn('Simulation server offline, stopping device locally:', e)

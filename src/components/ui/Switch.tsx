@@ -27,25 +27,29 @@ interface SwitchProps {
   checked: boolean
   onChange: (checked: boolean) => void
   disabled?: boolean
+  loading?: boolean
   label?: string
   className?: string
 }
 
-export function Switch({ checked, onChange, disabled, label, className }: SwitchProps) {
+export function Switch({ checked, onChange, disabled, loading, label, className }: SwitchProps) {
   return (
     <label
       className={cn(
         "inline-flex cursor-pointer items-center gap-3 select-none touch-manipulation",
-        disabled && "cursor-not-allowed opacity-50",
+        (disabled || loading) && "cursor-not-allowed opacity-50",
         className
       )}
     >
       <SwitchRoot
         checked={checked}
         onCheckedChange={onChange}
-        disabled={disabled}
+        disabled={disabled || loading}
       />
-      {label && <span className="text-sm font-semibold text-text-secondary">{label}</span>}
+      <div className="flex items-center gap-2">
+        {label && <span className="text-sm font-semibold text-text-secondary">{label}</span>}
+        {loading && <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-accent border-t-transparent" />}
+      </div>
     </label>
   )
 }

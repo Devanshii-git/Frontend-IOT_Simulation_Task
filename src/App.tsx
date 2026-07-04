@@ -10,6 +10,7 @@ const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage').then(m => ({
 const OtpPage = lazy(() => import('@/pages/auth/OtpPage').then(m => ({ default: m.OtpPage })))
 const DashboardPage = lazy(() => import('@/pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
 const DevicesPage = lazy(() => import('@/pages/DevicesPage').then(m => ({ default: m.DevicesPage })))
+const DeviceDetailPage = lazy(() => import('@/pages/DeviceDetailPage').then(m => ({ default: m.DeviceDetailPage })))
 const MonitoringPage = lazy(() => import('@/pages/MonitoringPage').then(m => ({ default: m.MonitoringPage })))
 const AlertsPage = lazy(() => import('@/pages/AlertsPage').then(m => ({ default: m.AlertsPage })))
 const SimulationPage = lazy(() => import('@/pages/SimulationPage').then(m => ({ default: m.SimulationPage })))
@@ -68,6 +69,7 @@ export default function App() {
               <Route path="/verify-otp" element={<PublicRoute><OtpPage /></PublicRoute>} />
               <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
               <Route path="/devices" element={<ProtectedRoute><DevicesPage /></ProtectedRoute>} />
+              <Route path="/devices/:id" element={<ProtectedRoute><DeviceDetailPage /></ProtectedRoute>} />
               <Route path="/monitoring" element={<ProtectedRoute><MonitoringPage /></ProtectedRoute>} />
               <Route path="/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
               <Route path="/simulation" element={<ProtectedRoute><SimulationPage /></ProtectedRoute>} />
