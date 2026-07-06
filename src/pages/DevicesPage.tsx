@@ -65,7 +65,7 @@ export function DevicesPage() {
   
   const [form, setForm] = useState({
     name: '',
-    type: 'temperature_sensor' as DeviceType,
+    type: '' as DeviceType,
     location: '',
     ipAddress: '',
     protocol: 'MQTT' as DeviceProtocol,
@@ -102,13 +102,17 @@ export function DevicesPage() {
       setErrorMessage('Device Name and Location are required.')
       return
     }
+    if (!form.type) {
+      setErrorMessage('Please select a device type.')
+      return
+    }
     setAdding(true)
     try {
       await addDevice(form)
       setShowAdd(false)
       setForm({
         name: '',
-        type: 'temperature_sensor',
+        type: '' as DeviceType,
         location: '',
         ipAddress: '',
         protocol: 'MQTT',
@@ -315,7 +319,8 @@ export function DevicesPage() {
           />
           <Select
             label="Type"
-            options={deviceTypeOptions}
+            required
+            options={[{ value: '', label: 'Select a type…' }, ...deviceTypeOptions]}
             value={form.type}
             onChange={(e) => setForm({ ...form, type: e.target.value as DeviceType })}
           />
