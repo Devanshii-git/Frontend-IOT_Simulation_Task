@@ -12,6 +12,7 @@ export function OtpPage() {
   const [resendTimer, setResendTimer] = useState(60)
   const inputs = useRef<(HTMLInputElement | null)[]>([])
   const verifyOtp = useAuthStore((s) => s.verifyOtp)
+  const resendOtp = useAuthStore((s) => s.resendOtp)
   const pendingEmail = useAuthStore((s) => s.pendingEmail)
   const navigate = useNavigate()
 
@@ -51,6 +52,17 @@ export function OtpPage() {
     }
   }
 
+  const handleResend = async () => {
+    if (!pendingEmail) return
+    setError('')
+    try {
+      await resendOtp(pendingEmail)
+      setResendTimer(60)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to resend code')
+    }
+  }
+
   return (
     <div className="relative flex min-h-screen text-text-primary transition-colors items-center justify-center px-6 select-none overflow-hidden bg-black">
       {/* Full Page LightRays Background */}
@@ -80,9 +92,6 @@ export function OtpPage() {
           <p className="text-sm text-white/60 font-medium">
             We sent a 6-digit code to <strong className="text-white">{pendingEmail ?? 'your email'}</strong>
           </p>
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/70">
-            Hint: use code 123456
-          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -101,9 +110,9 @@ export function OtpPage() {
               />
             ))}
           </div>
-          
+
           {error && <p className="text-sm font-medium text-status-error">{error}</p>}
-          
+
           <Button type="submit" className="w-full h-11 shadow-md shadow-accent/15" loading={loading}>
             Verify
           </Button>
@@ -113,7 +122,7 @@ export function OtpPage() {
           {resendTimer > 0 ? (
             <>Resend code in <strong className="text-white">{resendTimer}s</strong></>
           ) : (
-            <button className="font-semibold text-accent hover:text-accent-hover cursor-pointer" onClick={() => setResendTimer(60)}>
+            <button className="font-semibold text-accent hover:text-accent-hover cursor-pointer" onClick={handleResend}>
               Resend code
             </button>
           )}

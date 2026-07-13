@@ -44,6 +44,8 @@ interface DeviceState {
 
 const defaultFilters: DeviceFilters = { type: 'all', status: 'all', location: '', search: '' }
 
+const KNOWN_DEVICE_TYPES: DeviceType[] = ['temperature_sensor', 'projector', 'camera', 'microphone', 'speaker']
+
 const mapDeviceTypeName = (name: string): DeviceType => {
   const lower = name.toLowerCase()
   if (lower.includes('temp') || lower.includes('thermostat')) return 'temperature_sensor'
@@ -51,7 +53,11 @@ const mapDeviceTypeName = (name: string): DeviceType => {
   if (lower.includes('camera') || lower.includes('cctv')) return 'camera'
   if (lower.includes('mic')) return 'microphone'
   if (lower.includes('speaker') || lower.includes('audio')) return 'speaker'
-  return 'temperature_sensor'
+  // Try direct match against known types
+  const normalized = lower.replace(/\s+/g, '_') as DeviceType
+  if (KNOWN_DEVICE_TYPES.includes(normalized)) return normalized
+  console.warn(`Unknown device type name: "${name}", could not map to a known type`)
+  return normalized
 }
 
 const getOrCreateUser = async (): Promise<string> => {
@@ -92,36 +98,34 @@ const getOrCreateUser = async (): Promise<string> => {
   return '00000000-0000-0000-0000-000000000000'
 }
 
+const typeDisplayNames: Record<string, string> = {
+  temperature_sensor: 'Temperature Sensor',
+  projector: 'Projector',
+  camera: 'Camera',
+  microphone: 'Microphone',
+  speaker: 'Speaker',
+}
+
 const getOrCreateDeviceType = async (type: string): Promise<string> => {
   const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
+  const displayName = typeDisplayNames[type] ?? type
   try {
     const res = await fetch(`${rootUrl}/device-types`)
     if (res.ok) {
       const list = await res.json()
-      let searchName = 'Temperature Sensor'
-      if (type === 'projector') searchName = 'Projector'
-      else if (type === 'camera') searchName = 'Camera'
-      else if (type === 'microphone') searchName = 'Microphone'
-      else if (type === 'speaker') searchName = 'Speaker'
-      
       const found = list.find((dt: any) => 
         dt.name.toLowerCase().includes(type.toLowerCase()) || 
-        dt.name.toLowerCase().includes(searchName.toLowerCase())
+        dt.name.toLowerCase().includes(displayName.toLowerCase())
       )
       if (found) return found.id
       if (list.length > 0) return list[0].id
     }
     // Create new
-    let dtName = 'Temperature Sensor'
-    if (type === 'projector') dtName = 'Projector'
-    else if (type === 'camera') dtName = 'Camera'
-    else if (type === 'microphone') dtName = 'Microphone'
-    else if (type === 'speaker') dtName = 'Speaker'
     const createRes = await fetch(`${rootUrl}/device-types`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name: dtName,
+        name: displayName,
         description: `Device type for ${type}`,
       }),
     })
@@ -278,7 +282,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       }
 
       const mappedDevices: Device[] = rawDevices.map((d: any) => {
-        const typeName = typesMap.get(d.device_type_id) ?? 'custom'
+        const typeName = typesMap.get(d.device_type_id) ?? d.device_type_id ?? 'unknown'
         const protoName = protosMap.get(d.protocol_id) ?? 'HTTP'
         const properties = configsMap.get(d.id) ?? {}
 
@@ -392,7 +396,6 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
     try {
       if (isToggledOn) {
         const simType: SimulatorDeviceType = device.type as SimulatorDeviceType
-
         await get().startSimulation({
           device_id: id,
           device_type: simType,
@@ -404,9 +407,6 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
     } catch (e) {
       console.error('Error toggling device simulation', e)
     }
-
-    // Refresh devices list to fetch statuses
-    await get().fetchDevices()
   },
 
   updateDeviceDetails: async (id, payload) => {
@@ -626,7 +626,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
           // Map backend 'battery_level' to frontend 'battery' if present
           const telemetry: LatestTelemetry = {
             device_id: deviceId,
-            device_type: data.device_type ?? 'temperature_sensor',
+            device_type: data.device_type,
             temperature: data.temperature,
             battery: data.battery_level ?? data.battery,
             volume: data.volume,
@@ -638,7 +638,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
         } catch {
           // Offline fallback: return randomized mock telemetry!
           const device = get().devices.find(d => d.id === deviceId)
-          const devType = device?.type ?? 'temperature_sensor'
+          const devType = device?.type ?? 'unknown'
           const simType: SimulatorDeviceType = devType as SimulatorDeviceType
           
           const mockTelemetry: LatestTelemetry = {
@@ -693,14 +693,18 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
         body: JSON.stringify(payload),
       })
       if (!res.ok) throw new Error('Failed to start simulation.')
-      await get().refreshAll()
+      set(s => ({
+        devices: s.devices.map(d => d.id === payload.device_id ? { ...d, isToggledOn: true, status: 'online' } : d),
+        runningDevices: s.runningDevices.includes(payload.device_id) ? s.runningDevices : [...s.runningDevices, payload.device_id]
+      }))
+      await get().fetchTelemetryForDevices([payload.device_id])
     } catch (e) {
       console.warn('Simulation server offline, toggling device locally:', e)
       set(s => ({
         devices: s.devices.map(d => d.id === payload.device_id ? { ...d, isToggledOn: true, status: 'online' } : d),
         runningDevices: s.runningDevices.includes(payload.device_id) ? s.runningDevices : [...s.runningDevices, payload.device_id]
       }))
-      await get().refreshAll()
+      await get().fetchTelemetryForDevices([payload.device_id])
     }
   },
 
@@ -721,6 +725,9 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
         body: JSON.stringify({ device_id: deviceId }),
       })
       if (!res.ok) throw new Error('Failed to stop simulation')
+      set(s => ({
+        devices: s.devices.map(d => d.id === deviceId ? { ...d, isToggledOn: false, status: 'offline' } : d),
+      }))
       get().removeDevice(deviceId)
     } catch (e) {
       console.warn('Simulation server offline, stopping device locally:', e)

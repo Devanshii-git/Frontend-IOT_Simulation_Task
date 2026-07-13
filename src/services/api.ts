@@ -125,7 +125,6 @@ export async function registerApi(name: string, email: string, password: string)
     await delay(300)
     return { success: true }
   }
-
   const res = await fetch(`${API_BASE_URL}/auth/register`, {
     method: 'POST',
     headers: {
@@ -164,14 +163,14 @@ export async function resendOtpApi(email: string) {
   return { success: true }
 }
 
-export async function verifyOtpApi(email: string, otp_code: string, name?: string, password?: string) {
+export async function verifyOtpApi(email: string, otp_code: string) {
   if (USE_MOCK_API) {
     await delay(300)
     return {
       token: 'mock-jwt-token-12345',
       user: {
         id: 'mock-admin-id',
-        name: name || 'Mock Admin User',
+        name: 'Mock Admin User',
         email: email || 'demo@iotlab.dev',
         avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop'
       }
@@ -183,7 +182,7 @@ export async function verifyOtpApi(email: string, otp_code: string, name?: strin
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ email, otp_code, name, password }),
+    body: JSON.stringify({ email, otp_code }),
   })
 
   if (!res.ok) {

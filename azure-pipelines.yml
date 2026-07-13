@@ -1,11 +1,10 @@
 # azure-pipelines.yml (Frontend)
-# Sprint 1: Full Build & Validation Pipeline
+# Sprint 3: Full Build & Validation Pipeline
 
 trigger:
   branches:
     include:
       - main
-      - test-(Vansh)
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -24,6 +23,11 @@ steps:
   displayName: 'Install Dependencies'
 
 - script: |
+    npm audit --audit-level=high || true
+  displayName: 'Run Dependency Scan (npm audit)'
+  continueOnError: true
+
+- script: |
     npm run lint
   displayName: 'Run Linting (ESLint)'
   continueOnError: false
@@ -32,3 +36,10 @@ steps:
     npm run build
   displayName: 'Run Build (TypeScript compiler & Vite)'
   continueOnError: false
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(System.DefaultWorkingDirectory)/dist'
+    ArtifactName: 'drop-frontend'
+    publishLocation: 'Container'
+  displayName: 'Publish Frontend Artifact'
