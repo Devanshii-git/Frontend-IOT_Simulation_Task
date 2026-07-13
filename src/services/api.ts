@@ -1,4 +1,4 @@
-import type { Alert, AlertRule, TelemetryPoint, ActivityItem } from '@/types'
+import type { Alert, AlertRule, TelemetryPoint, ActivityItem, PendingProfile } from '@/types'
 import { API_BASE_URL, USE_MOCK_API } from '@/config/api'
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -420,3 +420,131 @@ export async function getHistoricalTelemetryApi(
   await delay(500)
   return []
 }
+
+// Local Mock Data Storage for Pending Profiles
+let mockPendingProfilesStore: PendingProfile[] = [
+  {
+    id: 'prof-1',
+    deviceName: 'AI-Thermostat-X1',
+    deviceType: 'temperature_sensor',
+    protocol: 'MQTT',
+    status: 'pending_review',
+    aiConfidence: 0.94,
+    generatedAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+    profileData: {
+      manufacturer: 'SmartClimate Corp',
+      model: 'SC-X1',
+      firmwareVersion: 'v1.4.2-patch3',
+      metricsThresholds: [
+        { metric: 'temperature', min: 15, max: 35, severity: 'critical' },
+        { metric: 'humidity', min: 20, max: 80, severity: 'warning' },
+        { metric: 'battery_level', min: 15, severity: 'critical' }
+      ],
+      supportedCommands: ['set_temperature', 'toggle_power', 'reboot']
+    }
+  },
+  {
+    id: 'prof-2',
+    deviceName: 'AI-Security-Cam-Y',
+    deviceType: 'camera',
+    protocol: 'HTTP',
+    status: 'pending_review',
+    aiConfidence: 0.88,
+    generatedAt: new Date(Date.now() - 3600000 * 6).toISOString(),
+    profileData: {
+      manufacturer: 'SecureEye Systems',
+      model: 'SE-Cam-Y2',
+      firmwareVersion: 'v2.1.0-beta',
+      metricsThresholds: [
+        { metric: 'fps', min: 15, max: 60, severity: 'warning' },
+        { metric: 'brightness', min: 5, max: 100, severity: 'info' }
+      ],
+      supportedCommands: ['pan_camera', 'tilt_camera', 'zoom_in', 'zoom_out', 'trigger_night_mode']
+    }
+  },
+  {
+    id: 'prof-3',
+    deviceName: 'AI-Auditorium-Mic',
+    deviceType: 'microphone',
+    protocol: 'WebSocket',
+    status: 'pending_review',
+    aiConfidence: 0.79,
+    generatedAt: new Date(Date.now() - 3600000 * 12).toISOString(),
+    profileData: {
+      manufacturer: 'AcousticsPro Inc',
+      model: 'AP-Mic-3000',
+      firmwareVersion: 'v3.0.1',
+      metricsThresholds: [
+        { metric: 'audio_level', min: 20, max: 95, severity: 'warning' },
+        { metric: 'sensitivity', min: 40, max: 100, severity: 'info' }
+      ],
+      supportedCommands: ['set_gain', 'toggle_mute', 'enable_noise_cancellation']
+    }
+  }
+]
+
+export async function getPendingProfilesApi(): Promise<PendingProfile[]> {
+  if (USE_MOCK_API) {
+    await delay(300)
+    return [...mockPendingProfilesStore]
+  }
+
+  const res = await fetch(`${API_BASE_URL}/profiles/pending`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}))
+    throw new Error(errData.detail || 'Failed to fetch pending profiles')
+  }
+
+  return await res.json()
+}
+
+export async function approveProfileApi(id: string): Promise<{ success: boolean; message: string }> {
+  if (USE_MOCK_API) {
+    await delay(400)
+    mockPendingProfilesStore = mockPendingProfilesStore.filter((p) => p.id !== id)
+    return { success: true, message: 'Profile approved and added to registry successfully.' }
+  }
+
+  const res = await fetch(`${API_BASE_URL}/profiles/${id}/approve`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}))
+    throw new Error(errData.detail || 'Failed to approve profile')
+  }
+
+  return await res.json()
+}
+
+export async function rejectProfileApi(id: string): Promise<{ success: boolean; message: string }> {
+  if (USE_MOCK_API) {
+    await delay(300)
+    mockPendingProfilesStore = mockPendingProfilesStore.filter((p) => p.id !== id)
+    return { success: true, message: 'Profile draft rejected and discarded.' }
+  }
+
+  const res = await fetch(`${API_BASE_URL}/profiles/${id}/reject`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}))
+    throw new Error(errData.detail || 'Failed to reject profile')
+  }
+
+  return await res.json()
+}
+
