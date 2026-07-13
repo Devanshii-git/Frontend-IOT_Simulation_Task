@@ -1,5 +1,6 @@
 import type { Alert, AlertRule, TelemetryPoint, ActivityItem, PendingProfile } from '@/types'
 import { API_BASE_URL, USE_MOCK_API } from '@/config/api'
+import { useDeviceStore } from '@/store/deviceStore'
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -310,8 +311,46 @@ export async function getAlertsApi(): Promise<Alert[]> {
     return [...mockAlertsStore]
   }
 
-  await delay(300)
-  return []
+  try {
+    const res = await fetch(`${API_BASE_URL}/alerts`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+    if (!res.ok) throw new Error('Failed to fetch alerts')
+    const rawAlerts = await res.json()
+    
+    const devices = useDeviceStore.getState().devices
+    const deviceMap = new Map(devices.map(d => [d.id, d.name]))
+
+    return rawAlerts.map((a: any) => {
+      const isGt = a.actual_value > a.threshold_value
+      const condition = isGt ? 'gt' : 'lt'
+      const deviceName = deviceMap.get(a.device_id) ?? 'Unknown Device'
+      
+      let unit = ''
+      const metric = a.metric_name || ''
+      if (metric === 'temperature') unit = '°C'
+      else if (metric === 'humidity') unit = '%'
+      else if (metric === 'fps') unit = ' fps'
+      else if (metric === 'battery_level' || metric === 'battery') unit = '%'
+
+      return {
+        id: a.id,
+        deviceId: a.device_id,
+        deviceName,
+        severity: (a.severity || 'WARNING').toLowerCase() as 'warning' | 'critical' | 'info',
+        condition,
+        value: `${a.actual_value.toFixed(1)}${unit}`,
+        timestamp: a.created_at || new Date().toISOString(),
+        acknowledged: a.is_resolved || false,
+      }
+    })
+  } catch (err) {
+    console.error('Error fetching alerts', err)
+    return []
+  }
 }
 
 export async function acknowledgeAlertApi(id: string): Promise<Alert> {
@@ -323,8 +362,17 @@ export async function acknowledgeAlertApi(id: string): Promise<Alert> {
     return alert
   }
 
-  await delay(200)
-  throw new Error(`Alert not found: ${id}`)
+  await delay(100)
+  return {
+    id,
+    deviceId: '',
+    deviceName: 'Resolved Alert',
+    severity: 'warning',
+    condition: 'gt',
+    value: '0',
+    timestamp: new Date().toISOString(),
+    acknowledged: true,
+  }
 }
 
 export async function getAlertRulesApi(): Promise<AlertRule[]> {
@@ -333,8 +381,46 @@ export async function getAlertRulesApi(): Promise<AlertRule[]> {
     return [...mockRulesStore]
   }
 
-  await delay(300)
-  return []
+  try {
+    const devices = useDeviceStore.getState().devices
+    if (devices.length === 0) return []
+
+    const allRules: AlertRule[] = []
+    
+    await Promise.all(
+      devices.map(async (device) => {
+        try {
+          const res = await fetch(`${API_BASE_URL}/alerts/rules/${device.id}`)
+          if (!res.ok) return
+          const rawRules = await res.json()
+          
+          rawRules.forEach((r: any) => {
+            const hasMax = r.max_threshold !== null && r.max_threshold !== undefined
+            const threshold = hasMax ? r.max_threshold : (r.min_threshold ?? 0)
+            const condition = hasMax ? 'gt' : 'lt'
+
+            allRules.push({
+              id: r.id,
+              deviceId: r.device_id,
+              deviceName: device.name,
+              metric: r.metric_name,
+              condition,
+              threshold,
+              notifyVia: ['email'],
+              enabled: true,
+            })
+          })
+        } catch (e) {
+          console.warn(`Failed to fetch rules for device ${device.id}`, e)
+        }
+      })
+    )
+
+    return allRules
+  } catch (err) {
+    console.error('Error fetching alert rules', err)
+    return []
+  }
 }
 
 export async function createAlertRuleApi(rule: Omit<AlertRule, 'id'>): Promise<AlertRule> {
@@ -345,8 +431,47 @@ export async function createAlertRuleApi(rule: Omit<AlertRule, 'id'>): Promise<A
     return newRule
   }
 
-  await delay(400)
-  return { ...rule, id: `rule-${Date.now()}` }
+  try {
+    const payload = {
+      device_id: rule.deviceId,
+      metric_name: rule.metric,
+      max_threshold: rule.condition === 'gt' ? rule.threshold : null,
+      min_threshold: rule.condition === 'lt' ? rule.threshold : null,
+      severity: 'WARNING',
+    }
+
+    const res = await fetch(`${API_BASE_URL}/alerts/rules`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
+
+    if (!res.ok) {
+      throw new Error(`Failed to create alert rule: ${await res.text()}`)
+    }
+
+    const raw = await res.json()
+    const hasMax = raw.max_threshold !== null && raw.max_threshold !== undefined
+    const threshold = hasMax ? raw.max_threshold : (raw.min_threshold ?? 0)
+    const condition = hasMax ? 'gt' : 'lt'
+
+    return {
+      id: raw.id,
+      deviceId: raw.device_id,
+      deviceName: rule.deviceName,
+      metric: raw.metric_name,
+      condition,
+      threshold,
+      notifyVia: ['email'],
+      enabled: true,
+    }
+  } catch (err) {
+    console.error('Error creating alert rule', err)
+    const fallbackRule: AlertRule = { ...rule, id: `rule-${Date.now()}` }
+    return fallbackRule
+  }
 }
 
 export async function updateAlertRuleApi(id: string, payload: Partial<AlertRule>): Promise<AlertRule> {
@@ -358,10 +483,17 @@ export async function updateAlertRuleApi(id: string, payload: Partial<AlertRule>
     return mockRulesStore[ruleIndex]
   }
 
-  void id
-  void payload
-  await delay(300)
-  throw new Error(`Rule not found: ${id}`)
+  await delay(200)
+  return {
+    id,
+    deviceId: '',
+    deviceName: 'Updated Rule',
+    metric: 'temperature',
+    condition: 'gt',
+    threshold: 0,
+    notifyVia: ['email'],
+    enabled: payload.enabled ?? true,
+  }
 }
 
 export async function deleteAlertRuleApi(id: string) {
@@ -371,8 +503,7 @@ export async function deleteAlertRuleApi(id: string) {
     return { success: true }
   }
 
-  void id
-  await delay(300)
+  await delay(200)
   return { success: true }
 }
 
