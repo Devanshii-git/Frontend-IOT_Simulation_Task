@@ -635,18 +635,21 @@ export async function getPendingProfilesApi(): Promise<PendingProfile[]> {
   return await res.json()
 }
 
-export async function approveProfileApi(id: string): Promise<{ success: boolean; message: string }> {
+export async function approveProfileApi(id: string, updatedProfileData: any): Promise<{ success: boolean; message: string }> {
   if (USE_MOCK_API) {
     await delay(400)
+    // In mock mode, log the approved state and remove from pending queue
+    console.log(`Mock approved profile ${id} with data:`, updatedProfileData)
     mockPendingProfilesStore = mockPendingProfilesStore.filter((p) => p.id !== id)
     return { success: true, message: 'Profile approved and added to registry successfully.' }
   }
 
   const res = await fetch(`${API_BASE_URL}/profiles/${id}/approve`, {
-    method: 'POST',
+    method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
     },
+    body: JSON.stringify(updatedProfileData),
   })
 
   if (!res.ok) {
@@ -665,7 +668,7 @@ export async function rejectProfileApi(id: string): Promise<{ success: boolean; 
   }
 
   const res = await fetch(`${API_BASE_URL}/profiles/${id}/reject`, {
-    method: 'POST',
+    method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
     },
@@ -678,4 +681,5 @@ export async function rejectProfileApi(id: string): Promise<{ success: boolean; 
 
   return await res.json()
 }
+
 
