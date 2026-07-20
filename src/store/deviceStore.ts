@@ -216,6 +216,30 @@ const MOCK_DEVICES: Device[] = [
     isToggledOn: true,
     signalStrength: 60,
     lastPing: new Date().toISOString(),
+  },
+  {
+    id: 'device-prj-05',
+    name: 'Auditorium HD Projector',
+    type: 'projector',
+    status: 'online',
+    location: 'Grand Auditorium',
+    ipAddress: '192.168.1.55',
+    protocol: 'MQTT',
+    isToggledOn: true,
+    signalStrength: 88,
+    lastPing: new Date().toISOString(),
+  },
+  {
+    id: 'device-temp-06',
+    name: 'Server Room Sensor',
+    type: 'temperature_sensor',
+    status: 'warning',
+    location: 'Data Center B',
+    ipAddress: '192.168.1.62',
+    protocol: 'MQTT',
+    isToggledOn: true,
+    signalStrength: 75,
+    lastPing: new Date().toISOString(),
   }
 ]
 

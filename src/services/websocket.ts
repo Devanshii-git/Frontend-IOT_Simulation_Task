@@ -1,5 +1,5 @@
 import type { LiveTelemetry } from '@/types'
-import { TELEMETRY_BASE_URL, USE_MOCK_API } from '@/config/api'
+import { WS_BASE_URL, USE_MOCK_API } from '@/config/api'
 import { useDeviceStore } from '@/store/deviceStore'
 import { useAuthStore } from '@/store/authStore'
 
@@ -81,12 +81,11 @@ export class TelemetryWebSocket {
   private connectSocket(deviceId: string) {
     if (this.sockets.has(deviceId)) return
 
-    // Safe protocol mapping: replace 'http' with 'ws' or 'https' with 'wss' correctly at the start
-    let wsBase = TELEMETRY_BASE_URL
-    if (wsBase.startsWith('https:')) {
-      wsBase = wsBase.replace(/^https:/, 'wss:')
-    } else {
+    let wsBase = WS_BASE_URL
+    if (wsBase.startsWith('http:')) {
       wsBase = wsBase.replace(/^http:/, 'ws:')
+    } else if (wsBase.startsWith('https:')) {
+      wsBase = wsBase.replace(/^https:/, 'wss:')
     }
 
     // Append auth token if present in auth state
@@ -226,8 +225,8 @@ export class TelemetryWebSocket {
       const deviceType = device?.type || ''
       const typeLower = deviceType.toLowerCase()
 
-      let metric = 'cpu'
-      let value = 0
+      let metric: string
+      let value: number
 
       // Generate realistic dynamic readings depending on device types
       if (typeLower.includes('temp') || typeLower.includes('thermostat')) {

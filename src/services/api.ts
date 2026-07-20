@@ -4,6 +4,22 @@ import { useDeviceStore } from '@/store/deviceStore'
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 5000) {
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal })
+    clearTimeout(id)
+    return res
+  } catch (err: any) {
+    clearTimeout(id)
+    if (err.name === 'AbortError') {
+      throw new Error(`Connection timed out reaching backend (${API_BASE_URL}). Ensure Docker backend container is online or set VITE_USE_MOCK_API=true in .env`, { cause: err })
+    }
+    throw err
+  }
+}
+
 // Local Mock Data Storage for Mock Mode
 const mockAlertsStore: Alert[] = [
   {
@@ -91,7 +107,7 @@ export async function loginApi(email: string, password: string) {
   params.append('username', email)
   params.append('password', password)
 
-  const res = await fetch(`${API_BASE_URL}/auth/login`, {
+  const res = await fetchWithTimeout(`${API_BASE_URL}/auth/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
