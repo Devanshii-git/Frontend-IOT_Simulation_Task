@@ -15,6 +15,7 @@ const MonitoringPage = lazy(() => import('@/pages/MonitoringPage').then(m => ({ 
 const AlertsPage = lazy(() => import('@/pages/AlertsPage').then(m => ({ default: m.AlertsPage })))
 const SimulationPage = lazy(() => import('@/pages/SimulationPage').then(m => ({ default: m.SimulationPage })))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
+const ProfileReviewPage = lazy(() => import('@/pages/ProfileReviewPage').then(m => ({ default: m.ProfileReviewPage })))
 
 function PageLoader() {
   return (
@@ -74,6 +75,7 @@ export default function App() {
               <Route path="/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
               <Route path="/simulation" element={<ProtectedRoute><SimulationPage /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+              <Route path="/profile-review" element={<ProtectedRoute><ProfileReviewPage /></ProtectedRoute>} />
               <Route path="*" element={<Navigate to="/splash" replace />} />
             </Routes>
           </Suspense>

@@ -1,5 +1,5 @@
 import {
-  Home, Cpu, Activity, Bell, FlaskConical, Settings, Search, X, ChevronLeft, ChevronRight, LogOut
+  Home, Cpu, Activity, Bell, FlaskConical, Settings, Search, X, ChevronLeft, ChevronRight, LogOut, ClipboardList
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { cn } from '@/utils/cn'
@@ -25,6 +25,7 @@ const navItems = [
   { to: '/alerts', icon: Bell, label: 'Alerts' },
   { to: '/simulation', icon: FlaskConical, label: 'Simulation' },
   { to: '/settings', icon: Settings, label: 'Settings' },
+  { to: '/profile-review', icon: ClipboardList, label: 'Profile Review' },
 ]
 
 

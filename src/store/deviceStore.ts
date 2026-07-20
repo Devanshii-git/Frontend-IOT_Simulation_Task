@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { DEVICE_SIMULATOR_BASE_URL, TELEMETRY_BASE_URL } from '@/config/api'
+import { DEVICE_SIMULATOR_BASE_URL, TELEMETRY_BASE_URL, USE_MOCK_API } from '@/config/api'
 import type { Device, DeviceStatus, DeviceType, DeviceProtocol, LatestTelemetry, SimulatorDeviceType } from '@/types'
 import { useAuthStore } from './authStore'
 
@@ -241,6 +241,16 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
 
   fetchDevices: async () => {
     set({ loading: true })
+    if (USE_MOCK_API) {
+      if (get().devices.length === 0) {
+        set({
+          devices: MOCK_DEVICES,
+          runningDevices: MOCK_DEVICES.filter((d) => d.isToggledOn).map((d) => d.id),
+        })
+      }
+      set({ loading: false })
+      return
+    }
     const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
     try {
       const [devsRes, typesRes, protosRes, configsRes] = await Promise.all([
@@ -293,19 +303,36 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       })
 
       if (mappedDevices.length === 0) {
-        set({ devices: MOCK_DEVICES, runningDevices: activeRunning.length > 0 ? activeRunning : MOCK_DEVICES.filter(d => d.isToggledOn).map(d => d.id) })
+        set({ devices: [], runningDevices: [] })
       } else {
         set({ devices: mappedDevices, runningDevices: activeRunning })
       }
     } catch (err) {
-      console.error('Error fetching devices, falling back to mock devices', err)
-      set({ devices: MOCK_DEVICES, runningDevices: MOCK_DEVICES.filter(d => d.isToggledOn).map(d => d.id) })
+      console.error('Error fetching devices, setting empty', err)
+      set({ devices: [], runningDevices: [] })
     } finally {
       set({ loading: false })
     }
   },
 
   addDevice: async (payload) => {
+    if (USE_MOCK_API) {
+      const newDevice: Device = {
+        id: `mock-device-${Date.now()}`,
+        name: payload.name,
+        type: payload.type,
+        status: 'offline',
+        location: payload.location,
+        ipAddress: payload.ipAddress || '127.0.0.1',
+        protocol: payload.protocol,
+        isToggledOn: false,
+        signalStrength: 0,
+        lastPing: new Date().toISOString(),
+      }
+      set((s) => ({ devices: [...s.devices, newDevice] }))
+      return
+    }
+
     const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
     const userId = await getOrCreateUser()
     const deviceTypeId = await getOrCreateDeviceType(payload.type)
@@ -351,6 +378,17 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   },
 
   toggleDevice: async (id, isToggledOn) => {
+    if (USE_MOCK_API) {
+      set((s) => ({
+        devices: s.devices.map((d) => (d.id === id ? { ...d, isToggledOn, status: isToggledOn ? 'online' : 'offline' } : d)),
+        runningDevices: isToggledOn
+          ? s.runningDevices.includes(id) ? s.runningDevices : [...s.runningDevices, id]
+          : s.runningDevices.filter((dId) => dId !== id)
+      }))
+      await get().refreshAll()
+      return
+    }
+
     // Starting or stopping simulator simulation dynamically toggles it
     const device = get().devices.find((d) => d.id === id)
     if (!device) return
@@ -372,6 +410,13 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   },
 
   updateDeviceDetails: async (id, payload) => {
+    if (USE_MOCK_API) {
+      set((s) => ({
+        devices: s.devices.map((d) => (d.id === id ? { ...d, ...payload } : d))
+      }))
+      return
+    }
+
     const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
     
     // Fetch current backend model because all fields in DeviceBase are required for updates
@@ -449,6 +494,14 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   },
 
   deleteDevice: async (id) => {
+    if (USE_MOCK_API) {
+      set((s) => ({
+        devices: s.devices.filter((d) => d.id !== id),
+        runningDevices: s.runningDevices.filter((dId) => dId !== id)
+      }))
+      return
+    }
+
     const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
     
     // Stop simulation first if it's running
@@ -517,6 +570,10 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   },
 
   fetchRunningDevices: async () => {
+    if (USE_MOCK_API) {
+      return get().runningDevices
+    }
+
     try {
       const res = await fetch(`${DEVICE_SIMULATOR_BASE_URL}/simulation/running`)
       if (!res.ok) throw new Error('Failed to fetch running simulations')
@@ -533,6 +590,33 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   },
 
   fetchTelemetryForDevices: async (deviceIds) => {
+    if (USE_MOCK_API) {
+      const entries = deviceIds.map((deviceId) => {
+        const device = get().devices.find(d => d.id === deviceId)
+        const devType = device?.type ?? 'temperature_sensor'
+        const simType: SimulatorDeviceType = devType as SimulatorDeviceType
+        
+        const mockTelemetry: LatestTelemetry = {
+          device_id: deviceId,
+          device_type: simType,
+          temperature: simType === 'temperature_sensor' ? Math.floor(20 + Math.random() * 10) : undefined,
+          battery: Math.floor(70 + Math.random() * 30),
+          volume: simType === 'speaker' ? Math.floor(30 + Math.random() * 40) : undefined,
+          brightness: simType === 'projector' ? Math.floor(50 + Math.random() * 50) : undefined,
+          fps: simType === 'camera' ? Math.floor(24 + Math.random() * 6) : undefined,
+          timestamp: new Date().toISOString(),
+        }
+        return [deviceId, mockTelemetry] as const
+      })
+
+      const nextMap: Record<string, LatestTelemetry> = {}
+      for (const [id, telemetry] of entries) {
+        if (telemetry) nextMap[id] = telemetry
+      }
+      set({ telemetry: nextMap })
+      return
+    }
+
     const entries = await Promise.all(
       deviceIds.map(async (deviceId) => {
         try {
@@ -593,6 +677,15 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   },
 
   startSimulation: async (payload) => {
+    if (USE_MOCK_API) {
+      set((s) => ({
+        devices: s.devices.map((d) => (d.id === payload.device_id ? { ...d, isToggledOn: true, status: 'online' } : d)),
+        runningDevices: s.runningDevices.includes(payload.device_id) ? s.runningDevices : [...s.runningDevices, payload.device_id],
+      }))
+      await get().refreshAll()
+      return
+    }
+
     try {
       const res = await fetch(`${DEVICE_SIMULATOR_BASE_URL}/simulation/start`, {
         method: 'POST',
@@ -616,6 +709,15 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   },
 
   stopSimulation: async (deviceId) => {
+    if (USE_MOCK_API) {
+      set((s) => ({
+        devices: s.devices.map((d) => (d.id === deviceId ? { ...d, isToggledOn: false, status: 'offline' } : d)),
+        runningDevices: s.runningDevices.filter((id) => id !== deviceId)
+      }))
+      get().removeDevice(deviceId)
+      return
+    }
+
     try {
       const res = await fetch(`${DEVICE_SIMULATOR_BASE_URL}/simulation/stop`, {
         method: 'POST',

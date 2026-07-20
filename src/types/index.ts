@@ -114,3 +114,26 @@ export interface AuthResponse {
   token: string
   user: User
 }
+
+export interface PendingProfile {
+  id: string
+  deviceName: string
+  deviceType: string
+  protocol: string
+  status: string
+  aiConfidence: number
+  generatedAt: string
+  profileData: {
+    manufacturer: string
+    model: string
+    firmwareVersion: string
+    metricsThresholds: {
+      metric: string
+      min?: number
+      max?: number
+      severity: string
+    }[]
+    supportedCommands: string[]
+  }
+}
+
