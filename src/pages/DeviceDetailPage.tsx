@@ -13,6 +13,7 @@ import { Select } from '@/components/ui/Select'
 import { StatusPill } from '@/components/ui/StatusPill'
 import { Switch } from '@/components/ui/Switch'
 import { SignalStrength } from '@/components/ui/SignalStrength'
+import { DeviceControlPanel } from '@/components/monitoring/DeviceControlPanel'
 import { useDeviceStore } from '@/store/deviceStore'
 import { useAlertStore } from '@/store/alertStore'
 import { useSimulationStore } from '@/store/simulationStore'
@@ -350,6 +351,9 @@ export function DeviceDetailPage() {
               )}
             </div>
           </Card>
+
+          {/* Actionable Command Execution Panel */}
+          <DeviceControlPanel device={device} />
 
           {/* Device Alert Rules */}
           <div className="space-y-4">

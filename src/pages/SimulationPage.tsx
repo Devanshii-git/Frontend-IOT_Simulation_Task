@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { TELEMETRY_BASE_URL } from '@/config/api'
+import { httpClient } from '@/services/httpClient'
 import { useDeviceStore } from '@/store/deviceStore'
 import {
   SIMULATOR_DEVICE_TYPE_LABELS,
@@ -147,9 +148,8 @@ export function SimulationPage() {
   const fetchHistory = useCallback(async (deviceId: string, range: TimeRange) => {
     setHistoryLoading(true)
     try {
-      const res = await fetch(`${TELEMETRY_BASE_URL}/telemetry/${deviceId}?time_range=${range}`)
-      if (!res.ok) throw new Error('Failed to fetch telemetry history')
-      const data = await res.json()
+      const res = await httpClient.get(`${TELEMETRY_BASE_URL}/telemetry/${deviceId}?time_range=${range}`)
+      const data = res.data
       const points: HistoryPoint[] = Array.isArray(data) ? data : (data.data ?? [])
       setHistoryData(points.map((p) => ({ ...p, chartTimestamp: formatChartTimestamp(p.timestamp) })))
       setHistoryError('')

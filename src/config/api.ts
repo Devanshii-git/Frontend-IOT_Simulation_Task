@@ -11,5 +11,6 @@ export const TELEMETRY_BASE_URL = import.meta.env.VITE_TELEMETRY_BASE_URL
   ? `${import.meta.env.VITE_TELEMETRY_BASE_URL.replace(/\/+$/, '')}/api/v1`
   : API_BASE_URL
 
-export const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API === 'true'
+export const USE_MOCK_API = false
+
 

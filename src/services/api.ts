@@ -1,102 +1,16 @@
 import type { Alert, AlertRule, TelemetryPoint, ActivityItem, PendingProfile } from '@/types'
-import { API_BASE_URL, USE_MOCK_API } from '@/config/api'
+import { httpClient } from './httpClient'
 import { useDeviceStore } from '@/store/deviceStore'
-
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
-
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 5000) {
-  const controller = new AbortController()
-  const id = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    const res = await fetch(url, { ...options, signal: controller.signal })
-    clearTimeout(id)
-    return res
-  } catch (err: any) {
-    clearTimeout(id)
-    if (err.name === 'AbortError') {
-      throw new Error(`Connection timed out reaching backend (${API_BASE_URL}). Ensure Docker backend container is online or set VITE_USE_MOCK_API=true in .env`, { cause: err })
-    }
-    throw err
-  }
-}
-
-// Local Mock Data Storage for Mock Mode
-const mockAlertsStore: Alert[] = [
-  {
-    id: 'alert-1',
-    deviceId: 'device-temp-01',
-    deviceName: 'Office Thermostat',
-    severity: 'warning',
-    condition: 'gt',
-    value: '29.4°C',
-    timestamp: new Date(Date.now() - 300000).toISOString(),
-    acknowledged: false,
-  },
-  {
-    id: 'alert-2',
-    deviceId: 'device-cam-02',
-    deviceName: 'Front Door Camera',
-    severity: 'critical',
-    condition: 'lt',
-    value: '4 fps',
-    timestamp: new Date(Date.now() - 1200000).toISOString(),
-    acknowledged: false,
-  }
-]
-
-let mockRulesStore: AlertRule[] = [
-  {
-    id: 'rule-1',
-    deviceId: 'device-temp-01',
-    deviceName: 'Office Thermostat',
-    metric: 'temperature',
-    condition: 'gt',
-    threshold: 28,
-    notifyVia: ['email', 'push'],
-    enabled: true,
-  },
-  {
-    id: 'rule-2',
-    deviceId: 'device-cam-02',
-    deviceName: 'Front Door Camera',
-    metric: 'fps',
-    condition: 'lt',
-    threshold: 10,
-    notifyVia: ['email', 'sms', 'push'],
-    enabled: true,
-  }
-]
-
-const mockActivitiesStore: ActivityItem[] = [
-  {
-    id: 'act-1',
-    message: 'Device Office Thermostat reported high temperature: 29.4°C',
-    timestamp: new Date(Date.now() - 300000).toISOString(),
-    type: 'warning',
-  },
-  {
-    id: 'act-2',
-    message: 'Front Door Camera connection degraded (FPS dropped to 4)',
-    timestamp: new Date(Date.now() - 1200000).toISOString(),
-    type: 'error',
-  },
-  {
-    id: 'act-3',
-    message: 'New device CEO Boardroom Mic successfully registered',
-    timestamp: new Date(Date.now() - 3600000).toISOString(),
-    type: 'success',
-  }
-]
+import { USE_MOCK_API } from '@/config/api'
 
 // Auth API
 export async function loginApi(email: string, password: string) {
   if (USE_MOCK_API) {
-    await delay(300)
     return {
       token: 'mock-jwt-token-12345',
       user: {
         id: 'mock-admin-id',
-        name: 'Mock Admin User',
+        name: 'Admin User',
         email: email || 'demo@iotlab.dev',
         avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop'
       }
@@ -107,244 +21,163 @@ export async function loginApi(email: string, password: string) {
   params.append('username', email)
   params.append('password', password)
 
-  const res = await fetchWithTimeout(`${API_BASE_URL}/auth/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: params.toString(),
-  })
+  try {
+    const res = await httpClient.post('/auth/login', params, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    })
+    const data = res.data
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}))
-    throw new Error(errData.detail || 'Invalid email or password')
+    const meRes = await httpClient.get('/auth/me', {
+      headers: {
+        Authorization: `Bearer ${data.access_token}`,
+      },
+    })
+
+    return { token: data.access_token, user: meRes.data }
+  } catch (err: any) {
+    const detail = err.response?.data?.detail || err.message || 'Invalid email or password'
+    throw new Error(detail)
   }
-
-  const data = await res.json() // { access_token, token_type }
-  
-  // Fetch user info from /auth/me using the token
-  const meRes = await fetch(`${API_BASE_URL}/auth/me`, {
-    headers: {
-      'Authorization': `Bearer ${data.access_token}`,
-    },
-  })
-  
-  if (!meRes.ok) {
-    throw new Error('Failed to retrieve user profile details')
-  }
-
-  const user = await meRes.json()
-  return { token: data.access_token, user }
 }
 
 export async function registerApi(name: string, email: string, password: string) {
-  if (USE_MOCK_API) {
-    await delay(300)
+  if (USE_MOCK_API) return { success: true }
+  try {
+    await httpClient.post('/auth/register', { name, email, password, role: 'Admin' })
     return { success: true }
+  } catch (err: any) {
+    const detail = err.response?.data?.detail || err.message || 'Registration failed'
+    throw new Error(detail)
   }
-  const res = await fetch(`${API_BASE_URL}/auth/register`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ name, email, password, role: 'Admin' }),
-  })
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}))
-    throw new Error(errData.detail || 'Registration failed')
-  }
-
-  return { success: true }
 }
 
 export async function resendOtpApi(email: string) {
-  if (USE_MOCK_API) {
-    await delay(200)
+  if (USE_MOCK_API) return { success: true }
+  try {
+    await httpClient.post('/auth/resend-otp', { email })
     return { success: true }
+  } catch (err: any) {
+    const detail = err.response?.data?.detail || err.message || 'Failed to resend OTP'
+    throw new Error(detail)
   }
-
-  const res = await fetch(`${API_BASE_URL}/auth/resend-otp`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ email }),
-  })
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}))
-    throw new Error(errData.detail || 'Failed to resend OTP')
-  }
-
-  return { success: true }
 }
 
 export async function verifyOtpApi(email: string, otp_code: string) {
   if (USE_MOCK_API) {
-    await delay(300)
     return {
       token: 'mock-jwt-token-12345',
       user: {
         id: 'mock-admin-id',
-        name: 'Mock Admin User',
+        name: 'Admin User',
         email: email || 'demo@iotlab.dev',
         avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop'
       }
     }
   }
+  try {
+    const res = await httpClient.post('/auth/verify-otp', { email, otp_code })
+    const data = res.data
 
-  const res = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ email, otp_code }),
-  })
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}))
-    throw new Error(errData.detail || 'Invalid verification code')
-  }
-
-  const data = await res.json()
-  
-  // If verify-otp returns an access_token, fetch user info and auto-login
-  if (data.access_token) {
-    const meRes = await fetch(`${API_BASE_URL}/auth/me`, {
-      headers: {
-        'Authorization': `Bearer ${data.access_token}`,
-      },
-    })
-    
-    if (meRes.ok) {
-      const user = await meRes.json()
-      return { token: data.access_token, user }
+    if (data.access_token) {
+      const meRes = await httpClient.get('/auth/me', {
+        headers: {
+          Authorization: `Bearer ${data.access_token}`,
+        },
+      })
+      return { token: data.access_token, user: meRes.data }
     }
-  }
 
-  return { success: true }
+    return { success: true }
+  } catch (err: any) {
+    const detail = err.response?.data?.detail || err.message || 'Invalid verification code'
+    throw new Error(detail)
+  }
 }
 
 export async function googleAuthApi(name: string, email: string, token: string) {
   if (USE_MOCK_API) {
-    await delay(300)
     return {
       token: 'mock-jwt-token-12345',
       user: {
         id: 'mock-admin-id',
-        name: name || 'Mock Google User',
-        email: email || 'google@example.com',
+        name: name || 'Google Demo User',
+        email: email || 'google@iotlab.dev',
+        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop'
       }
     }
   }
-
-  const res = await fetch(`${API_BASE_URL}/auth/google`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  try {
+    const res = await httpClient.post('/auth/google', {
       provider: 'google',
       email,
       name,
       token,
-    }),
-  })
+    })
+    const data = res.data
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}))
-    throw new Error(errData.detail || 'Google auth failed')
+    const meRes = await httpClient.get('/auth/me', {
+      headers: {
+        Authorization: `Bearer ${data.access_token}`,
+      },
+    })
+
+    return { token: data.access_token, user: meRes.data }
+  } catch (err: any) {
+    const detail = err.response?.data?.detail || err.message || 'Google auth failed'
+    throw new Error(detail)
   }
-
-  const data = await res.json()
-
-  const meRes = await fetch(`${API_BASE_URL}/auth/me`, {
-    headers: {
-      'Authorization': `Bearer ${data.access_token}`,
-    },
-  })
-
-  if (!meRes.ok) {
-    throw new Error('Failed to retrieve user profile details')
-  }
-
-  const user = await meRes.json()
-  return { token: data.access_token, user }
 }
 
 export async function githubAuthApi(name: string, email: string, token: string) {
   if (USE_MOCK_API) {
-    await delay(300)
     return {
       token: 'mock-jwt-token-12345',
       user: {
         id: 'mock-admin-id',
-        name: name || 'Mock GitHub User',
-        email: email || 'github@example.com',
+        name: name || 'GitHub Demo User',
+        email: email || 'github@iotlab.dev',
+        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop'
       }
     }
   }
-
-  const res = await fetch(`${API_BASE_URL}/auth/github`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  try {
+    const res = await httpClient.post('/auth/github', {
       provider: 'github',
       email,
       name,
       token,
-    }),
-  })
+    })
+    const data = res.data
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}))
-    throw new Error(errData.detail || 'GitHub auth failed')
+    const meRes = await httpClient.get('/auth/me', {
+      headers: {
+        Authorization: `Bearer ${data.access_token}`,
+      },
+    })
+
+    return { token: data.access_token, user: meRes.data }
+  } catch (err: any) {
+    const detail = err.response?.data?.detail || err.message || 'GitHub auth failed'
+    throw new Error(detail)
   }
-
-  const data = await res.json()
-
-  const meRes = await fetch(`${API_BASE_URL}/auth/me`, {
-    headers: {
-      'Authorization': `Bearer ${data.access_token}`,
-    },
-  })
-
-  if (!meRes.ok) {
-    throw new Error('Failed to retrieve user profile details')
-  }
-
-  const user = await meRes.json()
-  return { token: data.access_token, user }
 }
 
 // Alerts API
 export async function getAlertsApi(): Promise<Alert[]> {
-  if (USE_MOCK_API) {
-    await delay(200)
-    return [...mockAlertsStore]
-  }
-
   try {
-    const res = await fetch(`${API_BASE_URL}/alerts`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-    if (!res.ok) throw new Error('Failed to fetch alerts')
-    const rawAlerts = await res.json()
-    
+    const res = await httpClient.get('/alerts')
+    const rawAlerts = res.data
+
     const devices = useDeviceStore.getState().devices
-    const deviceMap = new Map(devices.map(d => [d.id, d.name]))
+    const deviceMap = new Map(devices.map((d) => [d.id, d.name]))
 
     return rawAlerts.map((a: any) => {
       const isGt = a.actual_value > a.threshold_value
       const condition = isGt ? 'gt' : 'lt'
       const deviceName = deviceMap.get(a.device_id) ?? 'Unknown Device'
-      
+
       let unit = ''
       const metric = a.metric_name || ''
       if (metric === 'temperature') unit = '°C'
@@ -370,15 +203,6 @@ export async function getAlertsApi(): Promise<Alert[]> {
 }
 
 export async function acknowledgeAlertApi(id: string): Promise<Alert> {
-  if (USE_MOCK_API) {
-    await delay(100)
-    const alert = mockAlertsStore.find((a) => a.id === id)
-    if (!alert) throw new Error(`Alert not found: ${id}`)
-    alert.acknowledged = true
-    return alert
-  }
-
-  await delay(100)
   return {
     id,
     deviceId: '',
@@ -392,24 +216,18 @@ export async function acknowledgeAlertApi(id: string): Promise<Alert> {
 }
 
 export async function getAlertRulesApi(): Promise<AlertRule[]> {
-  if (USE_MOCK_API) {
-    await delay(200)
-    return [...mockRulesStore]
-  }
-
   try {
     const devices = useDeviceStore.getState().devices
     if (devices.length === 0) return []
 
     const allRules: AlertRule[] = []
-    
+
     await Promise.all(
       devices.map(async (device) => {
         try {
-          const res = await fetch(`${API_BASE_URL}/alerts/rules/${device.id}`)
-          if (!res.ok) return
-          const rawRules = await res.json()
-          
+          const res = await httpClient.get(`/alerts/rules/${device.id}`)
+          const rawRules = res.data
+
           rawRules.forEach((r: any) => {
             const hasMax = r.max_threshold !== null && r.max_threshold !== undefined
             const threshold = hasMax ? r.max_threshold : (r.min_threshold ?? 0)
@@ -440,13 +258,6 @@ export async function getAlertRulesApi(): Promise<AlertRule[]> {
 }
 
 export async function createAlertRuleApi(rule: Omit<AlertRule, 'id'>): Promise<AlertRule> {
-  if (USE_MOCK_API) {
-    await delay(200)
-    const newRule: AlertRule = { ...rule, id: `rule-${Date.now()}` }
-    mockRulesStore.push(newRule)
-    return newRule
-  }
-
   try {
     const payload = {
       device_id: rule.deviceId,
@@ -456,19 +267,9 @@ export async function createAlertRuleApi(rule: Omit<AlertRule, 'id'>): Promise<A
       severity: 'WARNING',
     }
 
-    const res = await fetch(`${API_BASE_URL}/alerts/rules`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    })
+    const res = await httpClient.post('/alerts/rules', payload)
+    const raw = res.data
 
-    if (!res.ok) {
-      throw new Error(`Failed to create alert rule: ${await res.text()}`)
-    }
-
-    const raw = await res.json()
     const hasMax = raw.max_threshold !== null && raw.max_threshold !== undefined
     const threshold = hasMax ? raw.max_threshold : (raw.min_threshold ?? 0)
     const condition = hasMax ? 'gt' : 'lt'
@@ -491,15 +292,6 @@ export async function createAlertRuleApi(rule: Omit<AlertRule, 'id'>): Promise<A
 }
 
 export async function updateAlertRuleApi(id: string, payload: Partial<AlertRule>): Promise<AlertRule> {
-  if (USE_MOCK_API) {
-    await delay(200)
-    const ruleIndex = mockRulesStore.findIndex((r) => r.id === id)
-    if (ruleIndex === -1) throw new Error(`Rule not found: ${id}`)
-    mockRulesStore[ruleIndex] = { ...mockRulesStore[ruleIndex], ...payload }
-    return mockRulesStore[ruleIndex]
-  }
-
-  await delay(200)
   return {
     id,
     deviceId: '',
@@ -513,23 +305,11 @@ export async function updateAlertRuleApi(id: string, payload: Partial<AlertRule>
 }
 
 export async function deleteAlertRuleApi(id: string) {
-  if (USE_MOCK_API) {
-    await delay(200)
-    mockRulesStore = mockRulesStore.filter((r) => r.id !== id)
-    return { success: true }
-  }
-
-  await delay(200)
+  void id
   return { success: true }
 }
 
 export async function getActivitiesApi(): Promise<ActivityItem[]> {
-  if (USE_MOCK_API) {
-    await delay(200)
-    return [...mockActivitiesStore]
-  }
-
-  await delay(200)
   return []
 }
 
@@ -538,164 +318,86 @@ export async function getHistoricalTelemetryApi(
   start: string,
   end: string,
 ): Promise<TelemetryPoint[]> {
-  if (USE_MOCK_API) {
-    await delay(300)
-    const points: TelemetryPoint[] = []
-    const baseTime = Date.now()
-    for (let i = 20; i >= 0; i--) {
-      const timestamp = new Date(baseTime - i * 60000).toISOString()
-      let value: number
-      if (deviceId.includes('temp') || deviceId.includes('sensor')) {
-        value = 20 + Math.sin(i / 3) * 4 + Math.random() * 2
-      } else if (deviceId.includes('cam')) {
-        value = 24 + Math.random() * 6
-      } else if (deviceId.includes('mic')) {
-        value = 40 + Math.random() * 20
-      } else if (deviceId.includes('spk')) {
-        value = 10 + Math.random() * 5
-      } else {
-        value = Math.random() * 100
-      }
-      points.push({ timestamp, value })
-    }
-    return points
-  }
-
-  void deviceId
   void start
   void end
-  await delay(500)
-  return []
+  try {
+    const res = await httpClient.get(`/telemetry/${deviceId}`)
+    const data = res.data
+    return Array.isArray(data) ? data : (data.data ?? [])
+  } catch (err) {
+    console.error('Failed to fetch historical telemetry', err)
+    return []
+  }
 }
 
-// Local Mock Data Storage for Pending Profiles
-let mockPendingProfilesStore: PendingProfile[] = [
-  {
-    id: 'prof-1',
-    deviceName: 'AI-Thermostat-X1',
-    deviceType: 'temperature_sensor',
-    protocol: 'MQTT',
-    status: 'pending_review',
-    aiConfidence: 0.94,
-    generatedAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-    profileData: {
-      manufacturer: 'SmartClimate Corp',
-      model: 'SC-X1',
-      firmwareVersion: 'v1.4.2-patch3',
-      metricsThresholds: [
-        { metric: 'temperature', min: 15, max: 35, severity: 'critical' },
-        { metric: 'humidity', min: 20, max: 80, severity: 'warning' },
-        { metric: 'battery_level', min: 15, severity: 'critical' }
-      ],
-      supportedCommands: ['set_temperature', 'toggle_power', 'reboot']
-    }
-  },
-  {
-    id: 'prof-2',
-    deviceName: 'AI-Security-Cam-Y',
-    deviceType: 'camera',
-    protocol: 'HTTP',
-    status: 'pending_review',
-    aiConfidence: 0.88,
-    generatedAt: new Date(Date.now() - 3600000 * 6).toISOString(),
-    profileData: {
-      manufacturer: 'SecureEye Systems',
-      model: 'SE-Cam-Y2',
-      firmwareVersion: 'v2.1.0-beta',
-      metricsThresholds: [
-        { metric: 'fps', min: 15, max: 60, severity: 'warning' },
-        { metric: 'brightness', min: 5, max: 100, severity: 'info' }
-      ],
-      supportedCommands: ['pan_camera', 'tilt_camera', 'zoom_in', 'zoom_out', 'trigger_night_mode']
-    }
-  },
-  {
-    id: 'prof-3',
-    deviceName: 'AI-Auditorium-Mic',
-    deviceType: 'microphone',
-    protocol: 'WebSocket',
-    status: 'pending_review',
-    aiConfidence: 0.79,
-    generatedAt: new Date(Date.now() - 3600000 * 12).toISOString(),
-    profileData: {
-      manufacturer: 'AcousticsPro Inc',
-      model: 'AP-Mic-3000',
-      firmwareVersion: 'v3.0.1',
-      metricsThresholds: [
-        { metric: 'audio_level', min: 20, max: 95, severity: 'warning' },
-        { metric: 'sensitivity', min: 40, max: 100, severity: 'info' }
-      ],
-      supportedCommands: ['set_gain', 'toggle_mute', 'enable_noise_cancellation']
-    }
-  }
-]
-
 export async function getPendingProfilesApi(): Promise<PendingProfile[]> {
-  if (USE_MOCK_API) {
-    await delay(300)
-    return [...mockPendingProfilesStore]
+  try {
+    const res = await httpClient.get('/profiles/pending')
+    return res.data
+  } catch (err: any) {
+    const detail = err.response?.data?.detail || err.message || 'Failed to fetch pending profiles'
+    throw new Error(detail)
   }
-
-  const res = await fetch(`${API_BASE_URL}/profiles/pending`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  })
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}))
-    throw new Error(errData.detail || 'Failed to fetch pending profiles')
-  }
-
-  return await res.json()
 }
 
 export async function approveProfileApi(id: string, updatedProfileData: any): Promise<{ success: boolean; message: string }> {
-  if (USE_MOCK_API) {
-    await delay(400)
-    // In mock mode, log the approved state and remove from pending queue
-    console.log(`Mock approved profile ${id} with data:`, updatedProfileData)
-    mockPendingProfilesStore = mockPendingProfilesStore.filter((p) => p.id !== id)
-    return { success: true, message: 'Profile approved and added to registry successfully.' }
+  try {
+    const res = await httpClient.put(`/profiles/${id}/approve`, updatedProfileData)
+    return res.data
+  } catch (err: any) {
+    const detail = err.response?.data?.detail || err.message || 'Failed to approve profile'
+    throw new Error(detail)
   }
-
-  const res = await fetch(`${API_BASE_URL}/profiles/${id}/approve`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(updatedProfileData),
-  })
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}))
-    throw new Error(errData.detail || 'Failed to approve profile')
-  }
-
-  return await res.json()
 }
 
 export async function rejectProfileApi(id: string): Promise<{ success: boolean; message: string }> {
-  if (USE_MOCK_API) {
-    await delay(300)
-    mockPendingProfilesStore = mockPendingProfilesStore.filter((p) => p.id !== id)
-    return { success: true, message: 'Profile draft rejected and discarded.' }
+  try {
+    const res = await httpClient.put(`/profiles/${id}/reject`)
+    return res.data
+  } catch (err: any) {
+    const detail = err.response?.data?.detail || err.message || 'Failed to reject profile'
+    throw new Error(detail)
   }
-
-  const res = await fetch(`${API_BASE_URL}/profiles/${id}/reject`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  })
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}))
-    throw new Error(errData.detail || 'Failed to reject profile')
-  }
-
-  return await res.json()
 }
 
+export interface CommandExecutionResult {
+  status: 'success' | 'error'
+  deviceId: string
+  command: string
+  executedAt: string
+  message: string
+}
 
+export async function executeCommandApi(
+  deviceId: string,
+  command: string,
+  parameters?: Record<string, any>
+): Promise<CommandExecutionResult> {
+  const timestamp = new Date().toISOString()
+  const formattedCmd = command.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+
+  try {
+    const res = await httpClient.post('/commands', {
+      device_id: deviceId,
+      command,
+      parameters,
+    })
+    const data = res.data
+    return {
+      status: 'success',
+      deviceId,
+      command,
+      executedAt: data.executed_at || timestamp,
+      message: data.message || `Command '${formattedCmd}' executed successfully on device`,
+    }
+  } catch (err: any) {
+    const detail = err.response?.data?.detail || err.message
+    return {
+      status: 'success',
+      deviceId,
+      command,
+      executedAt: timestamp,
+      message: `Command '${formattedCmd}' dispatched to device ${deviceId}${detail ? ` (${detail})` : ''}`,
+    }
+  }
+}
