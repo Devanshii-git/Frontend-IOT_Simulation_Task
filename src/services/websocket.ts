@@ -1,7 +1,7 @@
 import type { LiveTelemetry } from '@/types'
 import { WS_BASE_URL, USE_MOCK_API } from '@/config/api'
-import { useDeviceStore } from '@/store/deviceStore'
 import { useAuthStore } from '@/store/authStore'
+import { useDeviceStore } from '@/store/deviceStore'
 
 type MessageHandler = (data: LiveTelemetry) => void
 
@@ -88,7 +88,6 @@ export class TelemetryWebSocket {
       wsBase = wsBase.replace(/^https:/, 'wss:')
     }
 
-    // Append auth token if present in auth state
     const token = useAuthStore.getState().token
     const wsUrl = `${wsBase}/telemetry/ws/${deviceId}${token ? `?token=${encodeURIComponent(token)}` : ''}`
 
@@ -160,7 +159,6 @@ export class TelemetryWebSocket {
         console.log(`WebSocket connection closed for device ${deviceId}`, event)
         this.sockets.delete(deviceId)
 
-        // Attempt reconnection if client handlers are still registered
         if (this.handlers.has(deviceId)) {
           this.scheduleReconnect(deviceId)
         }
@@ -182,7 +180,6 @@ export class TelemetryWebSocket {
       this.sockets.delete(deviceId)
     }
 
-    // Clear any pending reconnection state
     const timer = this.reconnectTimers.get(deviceId)
     if (timer) {
       clearTimeout(timer)
@@ -200,7 +197,6 @@ export class TelemetryWebSocket {
       return
     }
 
-    // Exponential backoff capped at 30 seconds
     const delay = Math.min(1000 * Math.pow(2, attempt), 30000)
     this.reconnectAttempts.set(deviceId, attempt + 1)
 
@@ -228,7 +224,6 @@ export class TelemetryWebSocket {
       let metric: string
       let value: number
 
-      // Generate realistic dynamic readings depending on device types
       if (typeLower.includes('temp') || typeLower.includes('thermostat')) {
         metric = 'temperature'
         value = Math.floor(20 + Math.sin(Date.now() / 10000) * 5 + Math.random() * 2)
