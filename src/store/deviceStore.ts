@@ -272,7 +272,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
           type: mapDeviceTypeName(typeName),
           status: isRunning ? 'online' : (d.status?.toLowerCase() === 'warning' ? 'warning' : 'offline'),
           location: properties.location ?? 'Unknown',
-          ipAddress: properties.ipAddress ?? '127.0.0.1',
+          ipAddress: d.ip_address ?? properties.ipAddress ?? '127.0.0.1',
           protocol: (protoName.toUpperCase() === 'MQTT' ? 'MQTT' : (protoName.toUpperCase() === 'WEBSOCKET' ? 'WebSocket' : 'HTTP')) as DeviceProtocol,
           isToggledOn: isRunning,
           signalStrength: 0,
