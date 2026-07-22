@@ -1,6 +1,6 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
   ? `${import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '')}/api/v1`
-  : 'http://192.168.1.226:8000/api/v1'
+  : `http://${window.location.hostname}:8000/api/v1`
 
 export const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL
   ? `${import.meta.env.VITE_WS_BASE_URL.replace(/\/+$/, '')}/api/v1`
