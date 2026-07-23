@@ -169,7 +169,6 @@ const getOrCreateDeviceType = async (type: string): Promise<string> => {
       dt.name.toLowerCase().includes(displayName.toLowerCase())
     )
     if (found) return found.id
-    if (list.length > 0) return list[0].id
 
     const createRes = await httpClient.post(`${rootUrl}/device-types`, {
       name: displayName,
@@ -189,7 +188,6 @@ const getOrCreateProtocol = async (proto: string): Promise<string> => {
     const list = res.data
     const found = list.find((p: any) => p.name.toUpperCase() === proto.toUpperCase())
     if (found) return found.id
-    if (list.length > 0) return list[0].id
 
     const createRes = await httpClient.post(`${rootUrl}/protocols`, {
       name: proto,
