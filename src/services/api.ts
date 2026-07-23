@@ -38,7 +38,7 @@ export async function loginApi(email: string, password: string) {
     return { token: data.access_token, user: meRes.data }
   } catch (err: any) {
     const detail = err.response?.data?.detail || err.message || 'Invalid email or password'
-    throw new Error(detail)
+    throw new Error(detail, { cause: err })
   }
 }
 
@@ -49,7 +49,7 @@ export async function registerApi(name: string, email: string, password: string)
     return { success: true }
   } catch (err: any) {
     const detail = err.response?.data?.detail || err.message || 'Registration failed'
-    throw new Error(detail)
+    throw new Error(detail, { cause: err })
   }
 }
 
@@ -60,7 +60,7 @@ export async function resendOtpApi(email: string) {
     return { success: true }
   } catch (err: any) {
     const detail = err.response?.data?.detail || err.message || 'Failed to resend OTP'
-    throw new Error(detail)
+    throw new Error(detail, { cause: err })
   }
 }
 
@@ -92,7 +92,7 @@ export async function verifyOtpApi(email: string, otp_code: string) {
     return { success: true }
   } catch (err: any) {
     const detail = err.response?.data?.detail || err.message || 'Invalid verification code'
-    throw new Error(detail)
+    throw new Error(detail, { cause: err })
   }
 }
 
@@ -126,7 +126,7 @@ export async function googleAuthApi(name: string, email: string, token: string) 
     return { token: data.access_token, user: meRes.data }
   } catch (err: any) {
     const detail = err.response?.data?.detail || err.message || 'Google auth failed'
-    throw new Error(detail)
+    throw new Error(detail, { cause: err })
   }
 }
 
@@ -160,7 +160,7 @@ export async function githubAuthApi(name: string, email: string, token: string) 
     return { token: data.access_token, user: meRes.data }
   } catch (err: any) {
     const detail = err.response?.data?.detail || err.message || 'GitHub auth failed'
-    throw new Error(detail)
+    throw new Error(detail, { cause: err })
   }
 }
 
@@ -336,7 +336,7 @@ export async function getPendingProfilesApi(): Promise<PendingProfile[]> {
     return res.data
   } catch (err: any) {
     const detail = err.response?.data?.detail || err.message || 'Failed to fetch pending profiles'
-    throw new Error(detail)
+    throw new Error(detail, { cause: err })
   }
 }
 
@@ -346,7 +346,7 @@ export async function approveProfileApi(id: string, updatedProfileData: any): Pr
     return res.data
   } catch (err: any) {
     const detail = err.response?.data?.detail || err.message || 'Failed to approve profile'
-    throw new Error(detail)
+    throw new Error(detail, { cause: err })
   }
 }
 
@@ -356,7 +356,7 @@ export async function rejectProfileApi(id: string): Promise<{ success: boolean; 
     return res.data
   } catch (err: any) {
     const detail = err.response?.data?.detail || err.message || 'Failed to reject profile'
-    throw new Error(detail)
+    throw new Error(detail, { cause: err })
   }
 }
 
