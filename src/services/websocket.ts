@@ -116,7 +116,10 @@ export class TelemetryWebSocket {
           } else if (typeLower.includes('camera') || typeLower.includes('cctv')) {
             metric = 'fps'
             value = metrics.fps ?? 0
-          } else if (typeLower.includes('mic') || typeLower.includes('speaker') || typeLower.includes('audio')) {
+          } else if (typeLower.includes('mic')) {
+            metric = 'battery'
+            value = metrics.battery ?? 0
+          } else if (typeLower.includes('speaker') || typeLower.includes('audio')) {
             metric = 'volume'
             value = metrics.volume ?? metrics.audio_level ?? 0
           } else if (typeLower.includes('projector')) {
