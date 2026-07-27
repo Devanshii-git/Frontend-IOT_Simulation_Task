@@ -1,5 +1,6 @@
 import {
-  Home, Cpu, Activity, Bell, FlaskConical, Settings, Search, X, ChevronLeft, ChevronRight, LogOut, ClipboardList
+  Home, Cpu, Activity, Bell, FlaskConical, Settings, Search, X, ChevronLeft, ChevronRight, LogOut, ClipboardList,
+  Binary, Wand2, Network
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { cn } from '@/utils/cn'
@@ -21,6 +22,9 @@ import {
 const navItems = [
   { to: '/', icon: Home, label: 'Dashboard' },
   { to: '/devices', icon: Cpu, label: 'Devices' },
+  { to: '/profiler-studio', icon: Binary, label: 'Profiler Studio' },
+  { to: '/fleet-wizard', icon: Wand2, label: 'Fleet Wizard' },
+  { to: '/fleet', icon: Network, label: 'Fleet Dashboard' },
   { to: '/monitoring', icon: Activity, label: 'Monitoring' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
   { to: '/simulation', icon: FlaskConical, label: 'Simulation' },

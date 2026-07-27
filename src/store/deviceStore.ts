@@ -80,6 +80,7 @@ interface DeviceState {
   telemetry: Record<string, LatestTelemetry>
   loading: boolean
   filters: DeviceFilters
+  spawnedFleet: Device[]
 
   fetchDevices: () => Promise<void>
   addDevice: (payload: Omit<Device, 'id' | 'status' | 'isToggledOn' | 'signalStrength' | 'lastPing'>) => Promise<void>
@@ -104,6 +105,8 @@ interface DeviceState {
     interval: number
   }) => Promise<void>
   stopSimulation: (deviceId: string) => Promise<void>
+  bulkSpawnDevices: (devices: any[]) => Promise<void>
+  bulkKillDevices: (ids: string[]) => Promise<void>
 }
 
 const defaultFilters: DeviceFilters = { type: 'all', status: 'all', location: '', search: '' }
@@ -206,6 +209,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   telemetry: {},
   loading: false,
   filters: { ...defaultFilters },
+  spawnedFleet: [],
 
   setRunningDevices: (devices) => set({ runningDevices: devices }),
   setTelemetry: (telemetry) => set({ telemetry }),
@@ -278,7 +282,10 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
         }
       })
 
-      set({ devices: mappedDevices, runningDevices: activeRunning })
+      const spawnedFleet = get().spawnedFleet || []
+      const mergedDevices = [...mappedDevices, ...spawnedFleet]
+      const mergedRunning = Array.from(new Set([...activeRunning, ...spawnedFleet.map(d => d.id)]))
+      set({ devices: mergedDevices, runningDevices: mergedRunning })
     } catch (err) {
       console.error('Error fetching devices, setting empty', err)
       set({ devices: [], runningDevices: [] })
@@ -555,5 +562,64 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       }))
       get().removeDevice(deviceId)
     }
+  },
+
+  bulkSpawnDevices: async (devicesToSpawn) => {
+    const newDevs: Device[] = devicesToSpawn.map((d: any) => ({
+      id: d.id,
+      name: `${d.manufacturer || 'Mock'} ${d.model || 'Device'} (${d.id.substring(0, 5)})`,
+      type: mapDeviceTypeName(d.protocol || 'HTTP'),
+      status: 'online',
+      location: 'Virtual Fleet Block',
+      ipAddress: d.ip,
+      protocol: (d.protocol || 'HTTP') as DeviceProtocol,
+      isToggledOn: true,
+      signalStrength: 90,
+      lastPing: new Date().toISOString()
+    }))
+
+    if (USE_MOCK_API) {
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+      set(s => ({
+        devices: [...s.devices, ...newDevs],
+        runningDevices: [...s.runningDevices, ...newDevs.map(d => d.id)],
+        spawnedFleet: [...s.spawnedFleet, ...newDevs]
+      }))
+      return
+    }
+
+    try {
+      await httpClient.post('/devices/spawn/bulk', { devices: devicesToSpawn })
+    } catch (e) {
+      console.error('Error bulk spawning devices on VDR', e)
+    }
+
+    set(s => ({
+      spawnedFleet: [...s.spawnedFleet, ...newDevs]
+    }))
+    await get().fetchDevices()
+  },
+
+  bulkKillDevices: async (ids) => {
+    if (USE_MOCK_API) {
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+      set(s => ({
+        devices: s.devices.map(d => ids.includes(d.id) ? { ...d, status: 'offline', isToggledOn: false } : d),
+        runningDevices: s.runningDevices.filter(id => !ids.includes(id)),
+        spawnedFleet: s.spawnedFleet.filter(d => !ids.includes(d.id))
+      }))
+      return
+    }
+
+    try {
+      await httpClient.delete('/devices/kill/bulk', { data: { ids } })
+    } catch (e) {
+      console.error('Error bulk killing devices on VDR', e)
+    }
+
+    set(s => ({
+      spawnedFleet: s.spawnedFleet.filter(d => !ids.includes(d.id))
+    }))
+    await get().fetchDevices()
   },
 }))

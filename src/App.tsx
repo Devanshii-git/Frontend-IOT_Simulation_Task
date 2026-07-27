@@ -16,6 +16,9 @@ const AlertsPage = lazy(() => import('@/pages/AlertsPage').then(m => ({ default:
 const SimulationPage = lazy(() => import('@/pages/SimulationPage').then(m => ({ default: m.SimulationPage })))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
 const ProfileReviewPage = lazy(() => import('@/pages/ProfileReviewPage').then(m => ({ default: m.ProfileReviewPage })))
+const DeviceProfilerStudio = lazy(() => import('@/pages/DeviceProfilerStudio').then(m => ({ default: m.DeviceProfilerStudio })))
+const FleetGeneratorWizard = lazy(() => import('@/pages/FleetGeneratorWizard').then(m => ({ default: m.FleetGeneratorWizard })))
+const FleetDashboard = lazy(() => import('@/pages/FleetDashboard').then(m => ({ default: m.FleetDashboard })))
 
 function PageLoader() {
   return (
@@ -76,6 +79,9 @@ export default function App() {
               <Route path="/simulation" element={<ProtectedRoute><SimulationPage /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
               <Route path="/profile-review" element={<ProtectedRoute><ProfileReviewPage /></ProtectedRoute>} />
+              <Route path="/profiler-studio" element={<ProtectedRoute><DeviceProfilerStudio /></ProtectedRoute>} />
+              <Route path="/fleet-wizard" element={<ProtectedRoute><FleetGeneratorWizard /></ProtectedRoute>} />
+              <Route path="/fleet" element={<ProtectedRoute><FleetDashboard /></ProtectedRoute>} />
               <Route path="*" element={<Navigate to="/splash" replace />} />
             </Routes>
           </Suspense>
