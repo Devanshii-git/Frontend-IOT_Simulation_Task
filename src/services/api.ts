@@ -401,3 +401,104 @@ export async function executeCommandApi(
     }
   }
 }
+
+export async function parseProfileApi(manualText: string, useMock: boolean): Promise<any> {
+  if (useMock) {
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    return {
+      id: 'mock-profile-uuid-123',
+      device_type: 'projector',
+      manufacturer: 'Epson',
+      model: 'EB-PU1007W',
+      description: 'High-performance installation laser projector',
+      firmware_version: 'V1.02',
+      hardware_version: 'Rev.B',
+      is_active: true,
+      metadata_: {
+        brightness_lumens: 8500,
+        light_source: 'Laser'
+      },
+      endpoints: [
+        {
+          protocol: 'PJLink',
+          command: '%1POWR 1',
+          description: 'Power On',
+          expected_response: '%1POWR=OK',
+          variables: {}
+        },
+        {
+          protocol: 'PJLink',
+          command: '%1POWR 0',
+          description: 'Power Off',
+          expected_response: '%1POWR=OK',
+          variables: {}
+        }
+      ],
+      telemetry: [
+        {
+          field_name: 'lamp_status',
+          data_type: 'int',
+          unit: 'state'
+        },
+        {
+          field_name: 'temperature',
+          data_type: 'float',
+          unit: 'celsius'
+        }
+      ],
+      commands: [
+        {
+          command_name: 'power_on',
+          payload: '%1POWR 1',
+          description: 'Power On the Projector'
+        },
+        {
+          command_name: 'power_off',
+          payload: '%1POWR 0',
+          description: 'Power Off the Projector'
+        }
+      ],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  }
+
+  const res = await httpClient.post('/ai/parse-profile', { manual_text: manualText })
+  return res.data
+}
+
+export async function bulkSpawnApi(devices: any[]): Promise<any> {
+  if (USE_MOCK_API) {
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+    return {
+      success: true,
+      message: `Bulk spawning completed: ${devices.length} succeeded, 0 failed`,
+      results: devices.map((d) => ({
+        id: d.id,
+        success: true,
+        message: 'Device spawned successfully'
+      }))
+    }
+  }
+
+  const res = await httpClient.post('/devices/spawn/bulk', { devices })
+  return res.data
+}
+
+export async function bulkKillApi(ids: string[]): Promise<any> {
+  if (USE_MOCK_API) {
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+    return {
+      success: true,
+      message: `Bulk termination completed: ${ids.length} succeeded, 0 failed`,
+      results: ids.map((id) => ({
+        id,
+        success: true,
+        message: 'Device killed successfully'
+      }))
+    }
+  }
+
+  const res = await httpClient.delete('/devices/kill/bulk', { data: { ids } })
+  return res.data
+}
