@@ -6,83 +6,154 @@ import { useDeviceStore } from '@/store/deviceStore'
 import { 
   ArrowLeft, 
   ArrowRight, 
-  Cpu, 
-  Settings2, 
   Play, 
   CheckCircle, 
   Terminal,
-  Workflow
+  Workflow,
+  Projector,
+  Camera,
+  Mic,
+  Volume2,
+  Thermometer,
+  Trash2,
+  Plus,
+  Minus,
+  Home,
+  PlusCircle,
+  Info
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { SpotlightCard } from '@/components/ui/SpotlightCard'
 import { useNavigate } from 'react-router-dom'
+import type { DeviceType } from '@/types'
 
-const MOCK_PROFILES = [
-  {
-    id: 'prof-proj',
+const DEVICE_PROFILES_TEMPLATES = {
+  projector: {
     name: 'Epson Installation Projector',
-    type: 'projector',
-    protocol: 'PJLink',
+    protocol: 'PJLink' as const,
     manufacturer: 'Epson',
     model: 'EB-PU1007W',
     metrics: ['temperature', 'lamp_status']
   },
-  {
-    id: 'prof-cam',
+  camera: {
     name: 'Sony PTZ Security Camera',
-    type: 'camera',
-    protocol: 'HTTP',
+    protocol: 'HTTP' as const,
     manufacturer: 'Sony',
     model: 'SNC-WR632',
     metrics: ['fps', 'brightness', 'status']
   },
-  {
-    id: 'prof-mic',
+  microphone: {
     name: 'Ceo Boardroom Microphone',
-    type: 'microphone',
-    protocol: 'WebSocket',
+    protocol: 'WebSocket' as const,
     manufacturer: 'Shure',
     model: 'MXA910',
     metrics: ['audio_level', 'status']
   },
-  {
-    id: 'prof-temp',
+  speaker: {
+    name: 'Biamp Tesira Amplifier/Speaker',
+    protocol: 'HTTP' as const,
+    manufacturer: 'Biamp',
+    model: 'Tesira-AMP',
+    metrics: ['volume', 'status']
+  },
+  temperature_sensor: {
     name: 'Office Temperature Sensor',
-    type: 'temperature_sensor',
-    protocol: 'MQTT',
+    protocol: 'MQTT' as const,
     manufacturer: 'Honeywell',
     model: 'T9-Smart',
     metrics: ['temperature', 'humidity', 'battery']
+  }
+}
+
+const ROOM_PRESETS = [
+  {
+    name: 'Conference Room',
+    deviceCounts: { projector: 1, speaker: 2, microphone: 1, camera: 1, temperature_sensor: 1 }
+  },
+  {
+    name: 'Boardroom',
+    deviceCounts: { projector: 1, speaker: 4, microphone: 2, camera: 1, temperature_sensor: 0 }
+  },
+  {
+    name: 'Huddle Space',
+    deviceCounts: { projector: 0, speaker: 1, microphone: 1, camera: 1, temperature_sensor: 0 }
+  },
+  {
+    name: 'Auditorium',
+    deviceCounts: { projector: 2, speaker: 8, microphone: 4, camera: 2, temperature_sensor: 2 }
+  },
+  {
+    name: 'Classroom',
+    deviceCounts: { projector: 1, speaker: 2, microphone: 1, camera: 0, temperature_sensor: 1 }
+  },
+  {
+    name: 'Custom Room',
+    deviceCounts: { projector: 0, speaker: 0, microphone: 0, camera: 0, temperature_sensor: 0 }
   }
 ]
 
 export function FleetGeneratorWizard() {
   const navigate = useNavigate()
   const bulkSpawn = useDeviceStore((s) => s.bulkSpawnDevices)
+  const resetWizard = useDeviceStore((s) => s.resetWizard)
+  const rooms = useDeviceStore((s) => s.wizardRooms)
+  const setRooms = useDeviceStore((s) => s.setWizardRooms)
+  const formData = useDeviceStore((s) => s.wizardConfig)
+  const setFormData = useDeviceStore((s) => s.setWizardConfig)
+
   const [step, setStep] = useState(1)
+  const [roomCountToAdd, setRoomCountToAdd] = useState<number | ''>(1)
 
-  // Step 1 states
-  const [selectedProfileId, setSelectedProfileId] = useState(MOCK_PROFILES[0].id)
-
-  // Step 2 states
-  const [formData, setFormData] = useState({
-    namePrefix: 'Virtual-Device-',
-    deviceCount: 5,
-    startingIp: '192.168.1.10',
-    startingPort: 8000,
-    startingMac: '00:11:22:33:44:00'
-  })
-
-  // Step 3 states
+  // Step 3: Run deployment states
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState(0)
   const [deployLogs, setDeployLogs] = useState<string[]>([])
   const [completed, setCompleted] = useState(false)
 
-  const selectedProfile = MOCK_PROFILES.find(p => p.id === selectedProfileId)!
+  // Room helpers
+  const handleAddRooms = (preset: typeof ROOM_PRESETS[0]) => {
+    const roomsToAddCount = Math.max(1, Number(roomCountToAdd) || 1)
+    const newRoomsList = [...rooms]
+    
+    for (let i = 0; i < roomsToAddCount; i++) {
+      const presetCount = newRoomsList.filter(r => r.name.toLowerCase().startsWith(preset.name.toLowerCase())).length
+      const suffix = presetCount > 0 ? ` ${presetCount + 1}` : ''
+      newRoomsList.push({
+        id: `room-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 4)}`,
+        name: `${preset.name}${suffix}`,
+        deviceCounts: { ...preset.deviceCounts }
+      })
+    }
+    
+    setRooms(newRoomsList)
+  }
+
+  const handleDeleteRoom = (roomId: string) => {
+    if (rooms.length <= 1) return
+    setRooms(rooms.filter(r => r.id !== roomId))
+  }
+
+  const handleUpdateRoomName = (roomId: string, newName: string) => {
+    setRooms(rooms.map(r => r.id === roomId ? { ...r, name: newName } : r))
+  }
+
+  const handleUpdateDeviceCount = (roomId: string, type: DeviceType, val: number) => {
+    setRooms(rooms.map(r => {
+      if (r.id === roomId) {
+        return {
+          ...r,
+          deviceCounts: {
+            ...r.deviceCounts,
+            [type]: Math.max(0, val)
+          }
+        }
+      }
+      return r
+    }))
+  }
 
   const updateField = (key: string, val: any) => {
-    setFormData(prev => ({ ...prev, [key]: val }))
+    setFormData({ ...formData, [key]: val })
   }
 
   // Helpers to calculate IP increment
@@ -104,12 +175,52 @@ export function FleetGeneratorWizard() {
     return parts.join(':')
   }
 
+  // Calculate list of all devices to generate based on room configs
+  const getDevicesToGenerate = () => {
+    const list: any[] = []
+    let ipIndex = 0
+
+    rooms.forEach(room => {
+      Object.entries(room.deviceCounts).forEach(([type, count]) => {
+        const t = type as DeviceType
+        const template = DEVICE_PROFILES_TEMPLATES[t]
+        for (let i = 0; i < count; i++) {
+          const id = `bulk-dev-${t}-${room.id.substring(5, 9)}-${i}-${Date.now().toString().slice(-4)}`
+          const ip = incrementIp(formData.startingIp, ipIndex)
+          const mac = incrementMac(formData.startingMac, ipIndex)
+          const port = formData.startingPort + ipIndex
+
+          list.push({
+            id,
+            name: `${room.name} - ${template.manufacturer} ${template.model} ${i + 1}`,
+            type: t,
+            location: room.name,
+            ip,
+            mac,
+            port,
+            protocol: template.protocol,
+            manufacturer: template.manufacturer,
+            model: template.model,
+            telemetry: template.metrics.map(field => ({
+              field_name: field,
+              data_type: field === 'temperature' || field === 'audio_level' || field === 'volume' || field === 'brightness' || field === 'fps' ? 'float' : 'int',
+              unit: field === 'temperature' ? 'celsius' : field === 'volume' ? 'percent' : 'state'
+            }))
+          })
+
+          ipIndex++
+        }
+      })
+    })
+
+    return list
+  }
+
+  const devicesToSpawn = getDevicesToGenerate()
+  const totalDevices = devicesToSpawn.length
+
   const handleNextStep = () => {
     if (step < 3) {
-      if (step === 1 && selectedProfile) {
-        // Set prefix based on profile name
-        updateField('namePrefix', `Virtual-${selectedProfile.manufacturer}-${selectedProfile.model}-`)
-      }
       setStep(prev => prev + 1)
     }
   }
@@ -122,45 +233,19 @@ export function FleetGeneratorWizard() {
 
   const handleStartDeployment = async () => {
     setRunning(true)
-    setDeployLogs([`[START] Initializing deployment runner...`])
+    setDeployLogs([`[START] Initializing deployment runner for ${rooms.length} rooms...`])
     
-    const devicesToSpawn: any[] = []
-    
-    // Generate device payloads
-    for (let i = 0; i < formData.deviceCount; i++) {
-      const devId = `bulk-dev-${selectedProfile.type}-${i}-${Date.now().toString().slice(-4)}`
-      const devIp = incrementIp(formData.startingIp, i)
-      const devMac = incrementMac(formData.startingMac, i)
-      const devPort = formData.startingPort + i
-      
-      devicesToSpawn.push({
-        id: devId,
-        ip: devIp,
-        mac: devMac,
-        port: devPort,
-        protocol: selectedProfile.protocol,
-        manufacturer: selectedProfile.manufacturer,
-        model: selectedProfile.model,
-        telemetry: selectedProfile.metrics.map(field => ({
-          field_name: field,
-          data_type: field === 'temperature' || field === 'audio_level' ? 'float' : 'int',
-          unit: field === 'temperature' ? 'celsius' : 'state'
-        }))
-      })
-    }
-
     // Deploy simulation logs sequentially
     for (let i = 0; i < devicesToSpawn.length; i++) {
       const dev = devicesToSpawn[i]
       
       // Delay to simulate spawning
-      await new Promise(r => setTimeout(r, 600))
+      await new Promise(r => setTimeout(r, 400))
       
       setDeployLogs(prev => [
         ...prev,
-        `[INFO] Checking IP address availability on ${dev.ip}... Available.`,
-        `[INFO] Building virtual worker listener for ID: ${dev.id} on port ${dev.port}...`,
-        `[SUCCESS] Spawned ${selectedProfile.manufacturer} ${selectedProfile.model} worker successfully (IP: ${dev.ip}, MAC: ${dev.mac}).`
+        `[INFO] [${dev.location}] Spawning ${dev.type.toUpperCase()} '${dev.name}' on IP ${dev.ip}:${dev.port}...`,
+        `[SUCCESS] Spawned successfully (MAC: ${dev.mac}, protocol: ${dev.protocol}).`
       ])
       
       setProgress(Math.round(((i + 1) / devicesToSpawn.length) * 100))
@@ -169,31 +254,46 @@ export function FleetGeneratorWizard() {
     // Call store action
     await bulkSpawn(devicesToSpawn)
 
-    await new Promise(r => setTimeout(r, 800))
+    await new Promise(r => setTimeout(r, 600))
     setDeployLogs(prev => [
       ...prev,
-      `[COMPLETED] Successfully spawned ${formData.deviceCount} simulated devices in fleet.`,
+      `[COMPLETED] Successfully spawned ${devicesToSpawn.length} simulated devices across ${rooms.length} rooms.`,
       `[SYSTEM] Telemetry engine has hooked listeners. Workers are ONLINE.`
     ])
+    
+    // Reset Zustand wizard state to default configuration
+    resetWizard()
+    
     setRunning(false)
     setCompleted(true)
   }
 
+  // Helper to render type icons
+  const renderTypeIcon = (type: DeviceType, className = "h-4 w-4") => {
+    switch (type) {
+      case 'projector': return <Projector className={`${className} text-indigo-400`} />
+      case 'camera': return <Camera className={`${className} text-teal-400`} />
+      case 'microphone': return <Mic className={`${className} text-amber-400`} />
+      case 'speaker': return <Volume2 className={`${className} text-pink-400`} />
+      case 'temperature_sensor': return <Thermometer className={`${className} text-emerald-400`} />
+    }
+  }
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto pb-12">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-text-primary">Fleet Generator Wizard</h1>
         <p className="text-sm text-text-muted">
-          Design, generate, and spin up multiple simulated virtual devices simultaneously in bulk.
+          Design room-based device allocations, scale device counts, and spin up multiple simulated virtual devices.
         </p>
       </div>
 
       {/* Steps indicator bar */}
       <div className="flex items-center justify-between border border-border bg-bg-surface p-4 rounded-lg">
         {[
-          { step: 1, label: 'Choose Profile', icon: Cpu },
-          { step: 2, label: 'Configure Fleet', icon: Settings2 },
-          { step: 3, label: 'Deploy Devices', icon: Workflow }
+          { step: 1, label: 'Rooms & Devices', icon: Home },
+          { step: 2, label: 'Configure Fleet Settings', icon: Workflow },
+          { step: 3, label: 'Deploy & Boot', icon: Play }
         ].map((item) => (
           <div key={item.step} className="flex items-center gap-3">
             <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold ${
@@ -222,41 +322,152 @@ export function FleetGeneratorWizard() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-4"
+              className="space-y-6"
             >
-              <h2 className="text-base font-bold text-text-primary">Step 1: Choose Device Profile</h2>
-              <p className="text-xs text-text-muted">Select the hardware specifications structure you want to deploy in bulk.</p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-base font-bold text-text-primary">Step 1: Define Rooms and Device Counts</h2>
+                  <p className="text-xs text-text-muted">Create layout rooms and assign how many of each device type should exist in each.</p>
+                </div>
+                <div className="flex items-center gap-2 bg-accent/5 px-4 py-2.5 rounded-lg border border-accent/25 text-xs">
+                  <span className="font-semibold text-text-primary">Total:</span>
+                  <span className="text-text-muted">{rooms.length} Rooms</span>
+                  <span className="text-border">|</span>
+                  <span className="text-accent font-bold">{totalDevices} Devices</span>
+                </div>
+              </div>
               
-              <div className="grid gap-4 sm:grid-cols-2">
-                {MOCK_PROFILES.map((profile) => {
-                  const active = selectedProfileId === profile.id
+              {/* Preset buttons to add room with manually set quantity */}
+              <div className="bg-bg-elevated/40 border border-border/80 p-4 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-3 flex-1">
+                  <span className="text-xs font-bold text-text-muted uppercase tracking-wider block">Add Room Presets</span>
+                  <div className="flex flex-wrap gap-2">
+                    {ROOM_PRESETS.map((preset) => (
+                      <Button 
+                        key={preset.name}
+                        variant="outline" 
+                        onClick={() => handleAddRooms(preset)}
+                        className="cursor-pointer text-xs h-9 flex items-center gap-1.5 hover:bg-bg-elevated"
+                      >
+                        <PlusCircle className="h-3.5 w-3.5 text-accent" /> {preset.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="flex flex-col gap-1.5 md:border-l md:border-border/40 md:pl-6 min-w-[150px]">
+                  <label className="text-xs font-bold text-text-muted uppercase tracking-wider block">Quantity to Add</label>
+                  <Input 
+                    type="number" 
+                    min={1} 
+                    max={20}
+                    value={roomCountToAdd}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '') {
+                        setRoomCountToAdd('');
+                      } else {
+                        setRoomCountToAdd(parseInt(val) || 1);
+                      }
+                    }}
+                    className="w-full text-sm font-semibold h-9 px-3"
+                  />
+                </div>
+              </div>
+
+              {/* Grid of rooms */}
+              <div className="grid gap-6 md:grid-cols-2">
+                {rooms.map((room) => {
+                  const roomTotal = Object.values(room.deviceCounts).reduce((a, b) => a + b, 0)
                   return (
-                    <button
-                      key={profile.id}
-                      onClick={() => setSelectedProfileId(profile.id)}
-                      className={`text-left p-5 rounded-lg border transition-all flex flex-col justify-between h-44 cursor-pointer relative overflow-hidden ${
-                        active 
-                          ? 'border-accent bg-accent/5 ring-2 ring-accent/30' 
-                          : 'border-border bg-bg-surface hover:bg-bg-elevated/40'
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <span className={`text-xs uppercase font-semibold px-2 py-0.5 rounded ${active ? 'bg-accent/15 text-accent' : 'bg-bg-elevated text-text-muted'}`}>
-                            {profile.protocol}
+                    <SpotlightCard key={room.id} spotlightColor="rgba(99, 102, 241, 0.08)" className="border border-border/80">
+                      <div className="p-4 border-b border-border/40 flex items-center justify-between gap-3">
+                        <Input
+                          value={room.name}
+                          onChange={(e) => handleUpdateRoomName(room.id, e.target.value)}
+                          className="bg-transparent border-transparent hover:border-border/60 focus:bg-bg-primary font-bold text-sm h-8 px-2 max-w-[200px]"
+                          placeholder="Room Name"
+                        />
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs bg-bg-elevated px-2 py-0.5 rounded text-text-muted font-mono">
+                            {roomTotal} dev
                           </span>
-                          <span className="text-xs text-text-muted capitalize">{profile.type.replace('_', ' ')}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteRoom(room.id)}
+                            disabled={rooms.length <= 1}
+                            className="h-8 w-8 text-status-error/80 hover:text-status-error hover:bg-status-error/10 cursor-pointer disabled:opacity-30"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
-                        <h3 className="font-bold text-text-primary text-sm mt-3">{profile.name}</h3>
-                        <p className="text-xs text-text-muted mt-1.5">{profile.manufacturer} {profile.model}</p>
                       </div>
-                      <div className="text-xs text-text-muted border-t border-border/40 pt-2 flex justify-between items-center w-full">
-                        <span>Metrics: {profile.metrics.join(', ')}</span>
-                      </div>
-                    </button>
+                      
+                      <CardContent className="p-4 space-y-3">
+                        {(Object.keys(DEVICE_PROFILES_TEMPLATES) as DeviceType[]).map((type) => {
+                          const count = room.deviceCounts[type] || 0
+                          const details = DEVICE_PROFILES_TEMPLATES[type]
+                          return (
+                            <div key={type} className="flex items-center justify-between p-2 rounded-lg bg-bg-primary/20 border border-border/10 hover:border-border/40 transition-all">
+                              <div className="flex items-center gap-2.5">
+                                <div className="h-8 w-8 rounded bg-bg-elevated flex items-center justify-center">
+                                  {renderTypeIcon(type, "h-4.5 w-4.5")}
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="text-xs font-semibold text-text-primary capitalize">{type.replace('_', ' ')}</span>
+                                  <span className="text-[10px] text-text-muted">{details.manufacturer} {details.model}</span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => handleUpdateDeviceCount(room.id, type, count - 1)}
+                                  disabled={count === 0}
+                                  className="h-7 w-7 rounded-full cursor-pointer disabled:opacity-30 border-border/60 hover:bg-bg-elevated"
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </Button>
+                                
+                                <Input 
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  value={count === 0 ? '' : count}
+                                  placeholder="0"
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    handleUpdateDeviceCount(room.id, type, val === '' ? 0 : parseInt(val) || 0);
+                                  }}
+                                  className="w-12 h-7 text-center text-xs font-mono font-bold text-text-primary p-0.5 border border-border/60 bg-transparent rounded focus:outline-none"
+                                />
+
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => handleUpdateDeviceCount(room.id, type, count + 1)}
+                                  className="h-7 w-7 rounded-full cursor-pointer border-border/60 hover:bg-bg-elevated"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </CardContent>
+                    </SpotlightCard>
                   )
                 })}
               </div>
+
+              {totalDevices === 0 && (
+                <div className="p-4 bg-status-error/10 border border-status-error/25 rounded-lg flex items-center gap-3 text-status-error text-xs">
+                  <Info className="h-4.5 w-4.5 flex-shrink-0" />
+                  <span>Please configure at least 1 device in your rooms to proceed to the next step.</span>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -266,30 +477,13 @@ export function FleetGeneratorWizard() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-4"
+              className="space-y-6"
             >
-              <h2 className="text-base font-bold text-text-primary">Step 2: Fleet Spawning Settings</h2>
-              <p className="text-xs text-text-muted">Configure the address ranges, scaling size, and naming schemas for your simulated fleet.</p>
+              <h2 className="text-base font-bold text-text-primary">Step 2: Fleet IP and Naming Parameters</h2>
+              <p className="text-xs text-text-muted">Define the base addressing metrics. The wizard will dynamically map unique endpoints for all simulated devices.</p>
 
-              <SpotlightCard spotlightColor="rgba(99, 102, 241, 0.1)">
-                <CardContent className="p-5 grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-text-muted uppercase">Device Name Prefix</label>
-                    <Input
-                      value={formData.namePrefix}
-                      onChange={(e) => updateField('namePrefix', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-text-muted uppercase">Fleet Size (Instances)</label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={50}
-                      value={formData.deviceCount}
-                      onChange={(e) => updateField('deviceCount', parseInt(e.target.value) || 1)}
-                    />
-                  </div>
+              <SpotlightCard spotlightColor="rgba(99, 102, 241, 0.05)">
+                <CardContent className="p-5 grid gap-4 md:grid-cols-3">
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-text-muted uppercase">Starting IP Address</label>
                     <Input
@@ -298,14 +492,14 @@ export function FleetGeneratorWizard() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-text-muted uppercase">Starting TCP Port</label>
+                    <label className="text-xs font-semibold text-text-muted uppercase">Starting Port</label>
                     <Input
                       type="number"
                       value={formData.startingPort}
-                      onChange={(e) => updateField('startingPort', parseInt(e.target.value) || 1)}
+                      onChange={(e) => updateField('startingPort', parseInt(e.target.value) || 1000)}
                     />
                   </div>
-                  <div className="space-y-1.5 sm:col-span-2">
+                  <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-text-muted uppercase">Starting MAC Address</label>
                     <Input
                       value={formData.startingMac}
@@ -315,10 +509,49 @@ export function FleetGeneratorWizard() {
                 </CardContent>
               </SpotlightCard>
 
-              {/* Range Preview Card */}
-              <div className="p-4 rounded-lg bg-bg-elevated/40 border border-border flex items-center justify-between text-xs text-text-muted">
-                <span>Deploying range: <strong>{formData.startingIp}</strong> to <strong>{incrementIp(formData.startingIp, formData.deviceCount - 1)}</strong></span>
-                <span>Ports: <strong>{formData.startingPort}</strong> - <strong>{formData.startingPort + formData.deviceCount - 1}</strong></span>
+              {/* Dynamic Device Preview List */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-text-primary flex items-center gap-1.5">
+                    Allocation Preview <span className="text-xs font-normal text-text-muted">({totalDevices} Devices total)</span>
+                  </h3>
+                </div>
+
+                <div className="border border-border rounded-lg overflow-hidden bg-bg-surface">
+                  <div className="max-h-80 overflow-y-auto scrollbar-thin">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-bg-elevated/50 text-text-muted sticky top-0 border-b border-border z-10">
+                        <tr>
+                          <th className="p-3 font-semibold">Location (Room)</th>
+                          <th className="p-3 font-semibold">Generated Device Name</th>
+                          <th className="p-3 font-semibold">Type</th>
+                          <th className="p-3 font-semibold">Protocol</th>
+                          <th className="p-3 font-semibold">IP Endpoint</th>
+                          <th className="p-3 font-semibold">MAC Address</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40">
+                        {devicesToSpawn.map((dev) => (
+                          <tr key={dev.id} className="hover:bg-bg-elevated/20">
+                            <td className="p-3 font-semibold text-text-primary">{dev.location}</td>
+                            <td className="p-3 text-text-muted">{dev.name}</td>
+                            <td className="p-3 capitalize flex items-center gap-1.5">
+                              {renderTypeIcon(dev.type, "h-3.5 w-3.5")}
+                              <span>{dev.type.replace('_', ' ')}</span>
+                            </td>
+                            <td className="p-3">
+                              <span className="px-1.5 py-0.5 rounded bg-bg-elevated text-[10px] font-mono uppercase">
+                                {dev.protocol}
+                              </span>
+                            </td>
+                            <td className="p-3 font-mono text-accent">{dev.ip}:{dev.port}</td>
+                            <td className="p-3 font-mono text-text-muted">{dev.mac}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}
@@ -331,7 +564,7 @@ export function FleetGeneratorWizard() {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <h2 className="text-base font-bold text-text-primary">Step 3: Deploy simulated workers</h2>
+              <h2 className="text-base font-bold text-text-primary">Step 3: Deploy & Boot Virtual Workers</h2>
 
               {!running && !completed ? (
                 <div className="text-center space-y-4 py-8">
@@ -339,9 +572,9 @@ export function FleetGeneratorWizard() {
                     <Workflow className="h-7 w-7" />
                   </div>
                   <div className="space-y-1.5">
-                    <h3 className="font-bold text-text-primary text-base">Ready to spawn {formData.deviceCount} workers</h3>
+                    <h3 className="font-bold text-text-primary text-base">Ready to spawn {totalDevices} workers</h3>
                     <p className="text-xs text-text-muted max-w-sm mx-auto leading-relaxed">
-                      Deploying {formData.deviceCount} simulated {selectedProfile.manufacturer} virtual workers using the {selectedProfile.protocol} protocol.
+                      This will register and start {totalDevices} simulated virtual devices across {rooms.length} room zones in the dashboard environment.
                     </p>
                   </div>
                   <Button onClick={handleStartDeployment} className="bg-accent hover:bg-accent/90 text-white min-h-[44px] px-8 cursor-pointer rounded-lg font-semibold shadow-md">
@@ -407,7 +640,8 @@ export function FleetGeneratorWizard() {
           </Button>
           <Button
             onClick={handleNextStep}
-            className="bg-accent hover:bg-accent/90 text-white min-h-[40px] px-6 font-semibold cursor-pointer rounded-lg shadow-sm"
+            disabled={step === 1 && totalDevices === 0}
+            className="bg-accent hover:bg-accent/90 text-white min-h-[40px] px-6 font-semibold cursor-pointer rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next <ArrowRight className="ml-1.5 h-4.5 w-4.5" />
           </Button>

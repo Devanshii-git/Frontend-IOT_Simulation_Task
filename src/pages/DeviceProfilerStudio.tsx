@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/Input'
 import { Switch } from '@/components/ui/Switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 import { parseProfileApi } from '@/services/api'
+import { USE_MOCK_API } from '@/config/api'
 import { 
   Terminal, 
   FileText, 
@@ -33,7 +34,7 @@ const EXTRACTION_STEPS = [
 
 export function DeviceProfilerStudio() {
   const [manualText, setManualText] = useState('')
-  const [useMock, setUseMock] = useState(true)
+  const [useMock, setUseMock] = useState(USE_MOCK_API)
   const [loading, setLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
   const [consoleLogs, setConsoleLogs] = useState<string[]>([])

@@ -63,7 +63,7 @@ const MOCK_DEVICES: Device[] = [
     lastPing: new Date().toISOString(),
   },
 ]
-import type { Device, DeviceStatus, DeviceType, DeviceProtocol, LatestTelemetry, SimulatorDeviceType } from '@/types'
+import type { Device, DeviceStatus, DeviceType, DeviceProtocol, LatestTelemetry, SimulatorDeviceType, RoomConfig } from '@/types'
 import { useAuthStore } from './authStore'
 import { httpClient } from '@/services/httpClient'
 
@@ -81,6 +81,17 @@ interface DeviceState {
   loading: boolean
   filters: DeviceFilters
   spawnedFleet: Device[]
+
+  // Wizard state management
+  wizardRooms: RoomConfig[]
+  wizardConfig: {
+    startingIp: string
+    startingPort: number
+    startingMac: string
+  }
+  setWizardRooms: (rooms: RoomConfig[]) => void
+  setWizardConfig: (config: { startingIp: string; startingPort: number; startingMac: string }) => void
+  resetWizard: () => void
 
   fetchDevices: () => Promise<void>
   addDevice: (payload: Omit<Device, 'id' | 'status' | 'isToggledOn' | 'signalStrength' | 'lastPing'>) => Promise<void>
@@ -210,6 +221,69 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   loading: false,
   filters: { ...defaultFilters },
   spawnedFleet: [],
+
+  wizardRooms: [
+    {
+      id: 'room-1',
+      name: 'Main Conference Room',
+      deviceCounts: {
+        projector: 1,
+        speaker: 2,
+        microphone: 1,
+        camera: 1,
+        temperature_sensor: 1
+      }
+    },
+    {
+      id: 'room-2',
+      name: 'CEO Boardroom',
+      deviceCounts: {
+        projector: 1,
+        speaker: 4,
+        microphone: 2,
+        camera: 1,
+        temperature_sensor: 0
+      }
+    }
+  ],
+  wizardConfig: {
+    startingIp: '192.168.1.10',
+    startingPort: 8000,
+    startingMac: '00:11:22:33:44:00'
+  },
+  setWizardRooms: (rooms) => set({ wizardRooms: rooms }),
+  setWizardConfig: (config) => set({ wizardConfig: config }),
+  resetWizard: () => set({
+    wizardRooms: [
+      {
+        id: 'room-1',
+        name: 'Main Conference Room',
+        deviceCounts: {
+          projector: 1,
+          speaker: 2,
+          microphone: 1,
+          camera: 1,
+          temperature_sensor: 1
+        }
+      },
+      {
+        id: 'room-2',
+        name: 'CEO Boardroom',
+        deviceCounts: {
+          projector: 1,
+          speaker: 4,
+          microphone: 2,
+          camera: 1,
+          temperature_sensor: 0
+        }
+      }
+    ],
+    wizardConfig: {
+      startingIp: '192.168.1.10',
+      startingPort: 8000,
+      startingMac: '00:11:22:33:44:00'
+    }
+  }),
 
   setRunningDevices: (devices) => set({ runningDevices: devices }),
   setTelemetry: (telemetry) => set({ telemetry }),
@@ -567,10 +641,10 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   bulkSpawnDevices: async (devicesToSpawn) => {
     const newDevs: Device[] = devicesToSpawn.map((d: any) => ({
       id: d.id,
-      name: `${d.manufacturer || 'Mock'} ${d.model || 'Device'} (${d.id.substring(0, 5)})`,
-      type: mapDeviceTypeName(d.protocol || 'HTTP'),
+      name: d.name || `${d.manufacturer || 'Mock'} ${d.model || 'Device'} (${d.id.substring(0, 5)})`,
+      type: (d.type || mapDeviceTypeName(d.protocol || 'HTTP')) as DeviceType,
       status: 'online',
-      location: 'Virtual Fleet Block',
+      location: d.location || 'Virtual Fleet Block',
       ipAddress: d.ip,
       protocol: (d.protocol || 'HTTP') as DeviceProtocol,
       isToggledOn: true,
@@ -589,9 +663,46 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
     }
 
     try {
-      await httpClient.post('/devices/spawn/bulk', { devices: devicesToSpawn })
+      const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
+      const userId = await getOrCreateUser()
+
+      for (const dev of devicesToSpawn) {
+        try {
+          const deviceTypeId = await getOrCreateDeviceType(dev.type)
+          const protocolId = await getOrCreateProtocol(dev.protocol)
+
+          // 1. Create the Device in DB
+          const devRes = await httpClient.post(`${rootUrl}/devices`, {
+            user_id: userId,
+            device_type_id: deviceTypeId,
+            protocol_id: protocolId,
+            device_name: dev.name,
+            status: 'CREATED',
+            azure_device_id: null,
+          })
+          const dbDevice = devRes.data
+
+          // 2. Create Configuration properties in DB
+          await httpClient.post(`${rootUrl}/device-configurations`, {
+            device_id: dbDevice.id,
+            properties: {
+              location: dev.location,
+              ipAddress: dev.ip,
+            },
+          })
+
+          // 3. Spawn/Start simulation in VDR via simulation start
+          await httpClient.post(`${DEVICE_SIMULATOR_BASE_URL}/simulation/start`, {
+            device_id: dbDevice.id,
+            device_type: dev.type as SimulatorDeviceType,
+            interval: 5
+          })
+        } catch (innerErr) {
+          console.error(`Failed to register or start device ${dev.name}`, innerErr)
+        }
+      }
     } catch (e) {
-      console.error('Error bulk spawning devices on VDR', e)
+      console.error('Error bulk spawning devices on Live Backend / VDR', e)
     }
 
     set(s => ({
@@ -612,9 +723,21 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
     }
 
     try {
-      await httpClient.delete('/devices/kill/bulk', { data: { ids } })
+      const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
+      for (const id of ids) {
+        try {
+          await httpClient.post(`${DEVICE_SIMULATOR_BASE_URL}/simulation/stop`, { device_id: id })
+        } catch (simErr) {
+          console.warn(`Failed to stop simulation for device ${id}`, simErr)
+        }
+        try {
+          await httpClient.delete(`${rootUrl}/devices/${id}`)
+        } catch (dbErr) {
+          console.warn(`Failed to delete device ${id} from database`, dbErr)
+        }
+      }
     } catch (e) {
-      console.error('Error bulk killing devices on VDR', e)
+      console.error('Error bulk killing devices on Live Backend', e)
     }
 
     set(s => ({

@@ -137,3 +137,9 @@ export interface PendingProfile {
   }
 }
 
+export interface RoomConfig {
+  id: string
+  name: string
+  deviceCounts: Record<DeviceType, number>
+}
+

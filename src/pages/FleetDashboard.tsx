@@ -38,9 +38,9 @@ export function FleetDashboard() {
   // Filter virtual devices
   const virtualDevices = useMemo(() => {
     return devices.filter(d => 
-      d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.ipAddress.includes(searchQuery) ||
-      d.protocol.toLowerCase().includes(searchQuery.toLowerCase())
+      (d.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (d.ipAddress || '').includes(searchQuery) ||
+      (d.protocol || '').toLowerCase().includes(searchQuery.toLowerCase())
     )
   }, [devices, searchQuery])
 
