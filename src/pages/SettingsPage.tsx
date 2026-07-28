@@ -21,7 +21,7 @@ export function SettingsPage() {
   const [profile, setProfile] = useState({ name: user?.name ?? '', email: user?.email ?? '', role: 'Administrator' })
   const [mqttUrl, setMqttUrl] = useState('mqtt://broker.iotlab.dev:1883')
   const [webhookUrl, setWebhookUrl] = useState('https://api.iotlab.dev/webhooks/events')
-  const [apiKey, setApiKey] = useState(generateApiKey())
+  const [apiKey, setApiKey] = useState(() => generateApiKey())
   const [copied, setCopied] = useState(false)
 
   // Simulation network mocking state
