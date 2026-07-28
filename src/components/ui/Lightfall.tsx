@@ -348,6 +348,10 @@ const Lightfall: React.FC<LightfallProps> = ({
       callIfFn(geometryRef.current, 'remove')
       callIfFn(meshRef.current, 'remove')
       callIfFn(rendererRef.current, 'destroy')
+      
+      // Force immediate release of WebGL context to prevent context exhaustion leaks
+      gl.getExtension('WEBGL_lose_context')?.loseContext()
+
       programRef.current = null
       geometryRef.current = null
       meshRef.current = null

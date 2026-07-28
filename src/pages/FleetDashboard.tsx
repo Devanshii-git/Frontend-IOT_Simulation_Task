@@ -14,9 +14,12 @@ import {
   WifiOff, 
   AlertTriangle,
   Play,
-  Square
+  Square,
+  Download
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
+import { httpClient } from '@/services/httpClient'
+import { TELEMETRY_BASE_URL } from '@/config/api'
 
 export function FleetDashboard() {
   const {
@@ -31,9 +34,18 @@ export function FleetDashboard() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [actionLoading, setActionLoading] = useState(false)
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
+
   useEffect(() => {
     fetchDevices().catch((e) => console.error(e))
   }, [fetchDevices])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, pageSize])
 
   // Filter virtual devices
   const virtualDevices = useMemo(() => {
@@ -43,6 +55,14 @@ export function FleetDashboard() {
       (d.protocol || '').toLowerCase().includes(searchQuery.toLowerCase())
     )
   }, [devices, searchQuery])
+
+  // Paginated devices
+  const paginatedDevices = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return virtualDevices.slice(startIndex, startIndex + pageSize)
+  }, [virtualDevices, currentPage, pageSize])
+
+  const totalPages = Math.ceil(virtualDevices.length / pageSize) || 1
 
   // Aggregate stats
   const stats = useMemo(() => {
@@ -55,9 +75,16 @@ export function FleetDashboard() {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(virtualDevices.map(d => d.id))
+      setSelectedIds(prev => {
+        const next = [...prev]
+        paginatedDevices.forEach(d => {
+          if (!next.includes(d.id)) next.push(d.id)
+        })
+        return next
+      })
     } else {
-      setSelectedIds([])
+      const paginatedIds = paginatedDevices.map(d => d.id)
+      setSelectedIds(prev => prev.filter(x => !paginatedIds.includes(x)))
     }
   }
 
@@ -83,6 +110,25 @@ export function FleetDashboard() {
     }
   }
 
+  const handleExportFleet = async () => {
+    try {
+      const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
+      const res = await httpClient.get(`${rootUrl}/devices/export`, {
+        responseType: 'blob'
+      })
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', 'fleet.csv')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (e) {
+      console.error('Failed to export fleet:', e)
+    }
+  }
+
   const handleBulkToggle = async (turnOn: boolean) => {
     if (selectedIds.length === 0) return
     setActionLoading(true)
@@ -95,6 +141,7 @@ export function FleetDashboard() {
     }
   }
 
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -105,6 +152,9 @@ export function FleetDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportFleet} className="cursor-pointer min-h-[36px]">
+            <Download className="h-4 w-4 mr-1.5" /> Export Fleet
+          </Button>
           <Button variant="outline" size="sm" onClick={() => fetchDevices()} disabled={loading} className="cursor-pointer min-h-[36px]">
             <RefreshCw className={cn("h-4 w-4 mr-1.5", loading && "animate-spin")} /> Refresh status
           </Button>
@@ -190,7 +240,7 @@ export function FleetDashboard() {
                 <th className="p-4 w-12">
                   <input
                     type="checkbox"
-                    checked={selectedIds.length === virtualDevices.length && virtualDevices.length > 0}
+                    checked={paginatedDevices.length > 0 && paginatedDevices.every(d => selectedIds.includes(d.id))}
                     onChange={(e) => handleSelectAll(e.target.checked)}
                     className="rounded border-border text-accent focus:ring-accent"
                   />
@@ -204,14 +254,14 @@ export function FleetDashboard() {
               </tr>
             </thead>
             <tbody>
-              {virtualDevices.length === 0 ? (
+              {paginatedDevices.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-10 text-text-muted">
                     No active virtual device workers found in list.
                   </td>
                 </tr>
               ) : (
-                virtualDevices.map((device) => {
+                paginatedDevices.map((device) => {
                   const isSelected = selectedIds.includes(device.id)
                   return (
                     <tr 
@@ -276,6 +326,71 @@ export function FleetDashboard() {
             </tbody>
           </table>
         </CardContent>
+        {/* Pagination controls */}
+        {virtualDevices.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-border/40 bg-bg-elevated/5 text-sm text-text-muted">
+            <div className="flex items-center gap-2">
+              <span>Show</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value))
+                }}
+                className="bg-bg-surface border border-border rounded px-2 py-1 text-text-primary focus:outline-none focus:border-accent cursor-pointer"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span>entries</span>
+              <span className="ml-4 border-l border-border/40 pl-4">
+                Showing {Math.min(virtualDevices.length, (currentPage - 1) * pageSize + 1)} to {Math.min(virtualDevices.length, currentPage * pageSize)} of {virtualDevices.length} entries
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="cursor-pointer h-8 px-2"
+              >
+                First
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="cursor-pointer h-8 px-2"
+              >
+                Previous
+              </Button>
+              <span className="px-3 py-1 bg-accent/10 border border-accent/20 rounded text-accent font-semibold text-xs">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="cursor-pointer h-8 px-2"
+              >
+                Next
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="cursor-pointer h-8 px-2"
+              >
+                Last
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   )
