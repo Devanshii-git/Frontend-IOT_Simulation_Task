@@ -481,8 +481,19 @@ export async function bulkSpawnApi(devices: any[]): Promise<any> {
     }
   }
 
-  const res = await httpClient.post('/devices/spawn/bulk', { devices })
-  return res.data
+  // Mismatch 1: Send raw array of devices instead of wrapping object
+  const res = await httpClient.post('/devices/spawn/bulk', devices)
+  const data = res.data
+
+  // Mismatch 2: Return detailed results array from the simple success message
+  if (data && !data.results) {
+    data.results = devices.map((d) => ({
+      id: d.id,
+      success: data.success ?? true,
+      message: data.message || 'Device spawned successfully'
+    }))
+  }
+  return data
 }
 
 export async function bulkKillApi(ids: string[]): Promise<any> {
@@ -500,5 +511,15 @@ export async function bulkKillApi(ids: string[]): Promise<any> {
   }
 
   const res = await httpClient.delete('/devices/kill/bulk', { data: { ids } })
-  return res.data
+  const data = res.data
+
+  // Mismatch 2: Return detailed results array from the simple success message
+  if (data && !data.results) {
+    data.results = ids.map((id) => ({
+      id,
+      success: data.success ?? true,
+      message: data.message || 'Device killed successfully'
+    }))
+  }
+  return data
 }
