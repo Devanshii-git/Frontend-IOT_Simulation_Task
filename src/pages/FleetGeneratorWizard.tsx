@@ -92,6 +92,10 @@ const ROOM_PRESETS = [
   }
 ]
 
+const generateRoomId = (index: number) => {
+  return `room-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 6)}`
+}
+
 export function FleetGeneratorWizard() {
   const navigate = useNavigate()
   const bulkSpawn = useDeviceStore((s) => s.bulkSpawnDevices)
@@ -119,7 +123,7 @@ export function FleetGeneratorWizard() {
       const presetCount = newRoomsList.filter(r => r.name.toLowerCase().startsWith(preset.name.toLowerCase())).length
       const suffix = presetCount > 0 ? ` ${presetCount + 1}` : ''
       newRoomsList.push({
-        id: `room-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 4)}`,
+        id: generateRoomId(i),
         name: `${preset.name}${suffix}`,
         deviceCounts: { ...preset.deviceCounts }
       })
@@ -185,7 +189,7 @@ export function FleetGeneratorWizard() {
         const t = type as DeviceType
         const template = DEVICE_PROFILES_TEMPLATES[t]
         for (let i = 0; i < count; i++) {
-          const id = `bulk-dev-${t}-${room.id.substring(5, 9)}-${i}-${Date.now().toString().slice(-4)}`
+          const id = `bulk-dev-${t}-${room.id}-${i}`
           const ip = incrementIp(formData.startingIp, ipIndex)
           const mac = incrementMac(formData.startingMac, ipIndex)
           const port = formData.startingPort + ipIndex
