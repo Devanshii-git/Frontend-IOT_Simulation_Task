@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Copy, RefreshCw, Moon, Sun, User, Settings2, ShieldCheck, Globe } from 'lucide-react'
+import { useToastStore } from '@/store/toastStore'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -23,6 +24,22 @@ export function SettingsPage() {
   const [webhookUrl, setWebhookUrl] = useState('https://api.iotlab.dev/webhooks/events')
   const [apiKey, setApiKey] = useState(() => generateApiKey())
   const [copied, setCopied] = useState(false)
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [savingIntegrations, setSavingIntegrations] = useState(false)
+
+  const handleSaveProfile = async () => {
+    setSavingProfile(true)
+    await new Promise((r) => setTimeout(r, 600))
+    setSavingProfile(false)
+    useToastStore.getState().showSuccess('Profile settings saved successfully!')
+  }
+
+  const handleSaveIntegrations = async () => {
+    setSavingIntegrations(true)
+    await new Promise((r) => setTimeout(r, 600))
+    setSavingIntegrations(false)
+    useToastStore.getState().showSuccess('DevOps integrations saved successfully!')
+  }
 
   // Simulation network mocking state
   const [latencyEnabled, setLatencyEnabled] = useState(true)
@@ -72,7 +89,7 @@ export function SettingsPage() {
               value={profile.role}
               onChange={(e) => setProfile({ ...profile, role: e.target.value })}
             />
-            <Button className="h-10 text-xs">Save Changes</Button>
+            <Button className="h-10 text-xs" onClick={handleSaveProfile} loading={savingProfile}>Save Changes</Button>
           </div>
         </CardContent>
       </Card>
@@ -168,7 +185,7 @@ export function SettingsPage() {
             </div>
             {copied && <p className="mt-1.5 text-xs font-semibold text-text-secondary">Copied to clipboard</p>}
           </div>
-          <Button className="h-10 text-xs">Save Integrations</Button>
+          <Button className="h-10 text-xs" onClick={handleSaveIntegrations} loading={savingIntegrations}>Save Integrations</Button>
         </CardContent>
       </Card>
 

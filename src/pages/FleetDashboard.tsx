@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { StatusPill } from '@/components/ui/StatusPill'
 import { useDeviceStore } from '@/store/deviceStore'
+import { useToastStore } from '@/store/toastStore'
 import { 
   Trash2, 
   Search, 
@@ -102,6 +103,7 @@ export function FleetDashboard() {
     setActionLoading(true)
     try {
       await bulkKillDevices(selectedIds)
+      useToastStore.getState().showSuccess(`Successfully terminated ${selectedIds.length} virtual devices.`)
       setSelectedIds([])
     } catch (e) {
       console.error(e)
@@ -134,6 +136,7 @@ export function FleetDashboard() {
     setActionLoading(true)
     try {
       await Promise.all(selectedIds.map(id => toggleDevice(id, turnOn)))
+      useToastStore.getState().showSuccess(`Successfully ${turnOn ? 'started' : 'stopped'} ${selectedIds.length} virtual devices.`)
     } catch (e) {
       console.error(e)
     } finally {
@@ -221,13 +224,13 @@ export function FleetDashboard() {
           {selectedIds.length > 0 && (
             <div className="flex items-center gap-2 bg-bg-elevated/40 border border-border p-1.5 rounded-lg">
               <span className="text-xs text-text-muted px-2 font-medium">{selectedIds.length} selected</span>
-              <Button size="sm" variant="outline" onClick={() => handleBulkToggle(true)} disabled={actionLoading} className="h-8 text-status-success border-status-success/20 hover:bg-status-success/5 cursor-pointer">
+              <Button size="sm" variant="outline" onClick={() => handleBulkToggle(true)} loading={actionLoading} className="h-8 text-status-success border-status-success/20 hover:bg-status-success/5 cursor-pointer animate-in fade-in">
                 <Play className="h-3.5 w-3.5 mr-1" /> Start
               </Button>
-              <Button size="sm" variant="outline" onClick={() => handleBulkToggle(false)} disabled={actionLoading} className="h-8 text-text-muted cursor-pointer">
+              <Button size="sm" variant="outline" onClick={() => handleBulkToggle(false)} loading={actionLoading} className="h-8 text-text-muted cursor-pointer animate-in fade-in">
                 <Square className="h-3.5 w-3.5 mr-1" /> Stop
               </Button>
-              <Button size="sm" variant="outline" onClick={handleBulkKill} disabled={actionLoading} className="h-8 text-status-error border-status-error/20 hover:bg-status-error/5 cursor-pointer">
+              <Button size="sm" variant="outline" onClick={handleBulkKill} loading={actionLoading} className="h-8 text-status-error border-status-error/20 hover:bg-status-error/5 cursor-pointer animate-in fade-in">
                 <Trash2 className="h-3.5 w-3.5 mr-1" /> Kill
               </Button>
             </div>

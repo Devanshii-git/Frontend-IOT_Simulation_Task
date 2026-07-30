@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/store/authStore'
+import { useToastStore } from '@/store/toastStore'
 import { Cpu } from 'lucide-react'
 import LightRays from '@/components/ui/LightRays'
 
@@ -44,6 +45,7 @@ export function OtpPage() {
     setError('')
     try {
       await verifyOtp(code)
+      useToastStore.getState().showSuccess('Email verified successfully! Welcome to AlignAV.')
       navigate('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Verification failed')
@@ -57,6 +59,7 @@ export function OtpPage() {
     setError('')
     try {
       await resendOtp(pendingEmail)
+      useToastStore.getState().showSuccess('OTP code resent successfully!')
       setResendTimer(60)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to resend code')

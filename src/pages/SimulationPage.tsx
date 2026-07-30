@@ -125,9 +125,7 @@ export function SimulationPage() {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
   const [timeRange, setTimeRange] = useState<TimeRange>('-30m')
   const [historyData, setHistoryData] = useState<HistoryPoint[]>([])
-  const [runningError, setRunningError] = useState('')
-  const [historyError, setHistoryError] = useState('')
-  const [stopError, setStopError] = useState('')
+  // Removed runningError, historyError, stopError states
   const [stoppingId, setStoppingId] = useState<string | null>(null)
   const [historyLoading, setHistoryLoading] = useState(false)
 
@@ -135,9 +133,8 @@ export function SimulationPage() {
     const load = async () => {
       try {
         await refreshAll()
-        setRunningError('')
       } catch (err) {
-        setRunningError(err instanceof Error ? err.message : 'Failed to load running simulations')
+        console.warn('Failed to load running simulations in background:', err)
       }
     }
     load()
@@ -152,9 +149,8 @@ export function SimulationPage() {
       const data = res.data
       const points: HistoryPoint[] = Array.isArray(data) ? data : (data.data ?? [])
       setHistoryData(points.map((p) => ({ ...p, chartTimestamp: formatChartTimestamp(p.timestamp) })))
-      setHistoryError('')
     } catch (err) {
-      setHistoryError(err instanceof Error ? err.message : 'Failed to load telemetry history')
+      console.error('Failed to load telemetry history:', err)
       setHistoryData([])
     } finally {
       setHistoryLoading(false)
@@ -170,13 +166,12 @@ export function SimulationPage() {
   }, [selectedDeviceId, timeRange, fetchHistory])
 
   const handleStop = async (deviceId: string) => {
-    setStopError('')
     setStoppingId(deviceId)
     try {
       await stopSimulation(deviceId)
       if (selectedDeviceId === deviceId) setSelectedDeviceId(null)
     } catch (err) {
-      setStopError(err instanceof Error ? err.message : 'Failed to stop simulation')
+      console.error('Failed to stop simulation:', err)
     } finally {
       setStoppingId(null)
     }
@@ -194,12 +189,7 @@ export function SimulationPage() {
         <p className="text-sm text-text-muted font-medium">Monitor running device simulations and live telemetry.</p>
       </div>
 
-      {runningError && (
-        <div className="rounded-lg bg-red-100 px-4 py-3 text-sm text-red-800 border border-red-200">{runningError}</div>
-      )}
-      {stopError && (
-        <div className="rounded-lg bg-red-100 px-4 py-3 text-sm text-red-800 border border-red-200">{stopError}</div>
-      )}
+      {/* Simulation load errors logged to browser logs */}
 
       {runningDevices.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl bg-bg-surface p-12 shadow text-center">
@@ -279,9 +269,7 @@ export function SimulationPage() {
               ))}
             </div>
           </div>
-          {historyError && (
-            <div className="rounded-lg bg-red-100 px-4 py-3 text-sm text-red-800 border border-red-200">{historyError}</div>
-          )}
+          {/* Telemetry history errors logged to browser logs */}
           {historyLoading ? (
             <div className="flex h-64 items-center justify-center text-sm text-text-muted">Loading chart…</div>
           ) : historyData.length === 0 ? (

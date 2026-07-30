@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useDeviceStore } from '@/store/deviceStore'
+import { useToastStore } from '@/store/toastStore'
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -237,6 +238,7 @@ export function FleetGeneratorWizard() {
 
   const handleStartDeployment = async () => {
     setRunning(true)
+    useToastStore.getState().showInfo(`Initiated bulk deployment of ${devicesToSpawn.length} devices...`)
     setDeployLogs([`[START] Initializing deployment runner for ${rooms.length} rooms...`])
     
     // Deploy simulation logs sequentially
@@ -268,6 +270,7 @@ export function FleetGeneratorWizard() {
     // Reset Zustand wizard state to default configuration
     resetWizard()
     
+    useToastStore.getState().showSuccess(`Successfully spawned ${devicesToSpawn.length} simulated devices!`)
     setRunning(false)
     setCompleted(true)
   }

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/Input'
 import { Switch } from '@/components/ui/Switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 import { parseProfileApi } from '@/services/api'
+import { useToastStore } from '@/store/toastStore'
 import { USE_MOCK_API } from '@/config/api'
 import { 
   Terminal, 
@@ -90,6 +91,7 @@ export function DeviceProfilerStudio() {
       setProfile(data)
       setJsonText(JSON.stringify(data, null, 2))
       setJsonError('')
+      useToastStore.getState().showSuccess(`AI parsing completed for ${data.manufacturer} ${data.model}!`)
       setConsoleLogs((logs) => [
         ...logs,
         `[SUCCESS] AI parsing completed successfully.`,
