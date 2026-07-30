@@ -6,6 +6,7 @@ import Lightfall from '@/components/ui/Lightfall'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useAuthStore } from '@/store/authStore'
+import { useToastStore } from '@/store/toastStore'
 import { motion } from 'framer-motion'
 import type { Variants } from 'framer-motion'
 import { ShinyText } from '@/components/ui/ShinyText'
@@ -72,6 +73,7 @@ export function LoginPage() {
     setLoading(true)
     try {
       await login(email, password)
+      useToastStore.getState().showSuccess('Welcome back! Signed in successfully.')
       navigate('/')
     } catch (err) {
       setApiError(err instanceof Error ? err.message : 'Login failed')
@@ -92,6 +94,7 @@ export function LoginPage() {
       } else {
         await loginWithGithub(name, email, mockToken)
       }
+      useToastStore.getState().showSuccess(`Welcome back! Signed in with ${provider} successfully.`)
       navigate('/')
     } catch (err) {
       setApiError(err instanceof Error ? err.message : `${provider} sign in failed`)

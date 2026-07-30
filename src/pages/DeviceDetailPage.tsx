@@ -17,6 +17,7 @@ import { DeviceControlPanel } from '@/components/monitoring/DeviceControlPanel'
 import { useDeviceStore } from '@/store/deviceStore'
 import { useAlertStore } from '@/store/alertStore'
 import { useSimulationStore } from '@/store/simulationStore'
+import { useToastStore } from '@/store/toastStore'
 import { telemetryWs } from '@/services/websocket'
 import { deviceTypeConfig, protocolOptions } from '@/utils/deviceIcons'
 import { formatRelativeTime } from '@/utils/format'
@@ -146,6 +147,7 @@ export function DeviceDetailPage() {
     setUpdating(true)
     try {
       await updateDeviceDetails(device.id, form)
+      useToastStore.getState().showSuccess('Device details updated successfully!')
     } catch (e) {
       console.error(e)
     } finally {
@@ -157,6 +159,7 @@ export function DeviceDetailPage() {
     setToggling(true)
     try {
       await toggleDevice(id, checked)
+      useToastStore.getState().showSuccess(`Device simulation ${checked ? 'started' : 'stopped'} successfully.`)
     } catch (e) {
       console.error(e)
     } finally {
@@ -166,8 +169,13 @@ export function DeviceDetailPage() {
 
   const handleDeleteDevice = async () => {
     if (window.confirm(`Are you sure you want to delete ${device.name}?`)) {
-      await deleteDevice(device.id)
-      navigate('/devices')
+      try {
+        await deleteDevice(device.id)
+        useToastStore.getState().showSuccess('Device deleted successfully!')
+        navigate('/devices')
+      } catch (err) {
+        console.error(err)
+      }
     }
   }
 
@@ -183,6 +191,7 @@ export function DeviceDetailPage() {
         notifyVia: ruleForm.notifyVia,
         enabled: true,
       })
+      useToastStore.getState().showSuccess('Alert rule created successfully!')
       setShowAddRule(false)
       setRuleForm({
         metric: 'temperature',

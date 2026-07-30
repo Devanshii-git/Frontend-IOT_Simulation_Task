@@ -5,6 +5,7 @@ import { Cpu } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useAuthStore } from '@/store/authStore'
+import { useToastStore } from '@/store/toastStore'
 import { motion } from 'framer-motion'
 import type { Variants } from 'framer-motion'
 import Lightfall from '@/components/ui/Lightfall'
@@ -68,6 +69,7 @@ export function RegisterPage() {
     setLoading(true)
     try {
       await register(form.name, form.email, form.password)
+      useToastStore.getState().showSuccess('Account created! A 6-digit OTP code has been sent to your email.')
       navigate('/verify-otp')
     } catch (err) {
       setApiError(err instanceof Error ? err.message : 'Registration failed')

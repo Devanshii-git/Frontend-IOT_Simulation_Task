@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Select'
 import { useDeviceStore } from '@/store/deviceStore'
 import { getPrimaryMetricKey } from '@/utils/simulatorDevices'
-import { exportToCSV, exportToJSON } from '@/utils/export'
+import { exportTelemetryApi } from '@/services/api'
+import { useToastStore } from '@/store/toastStore'
 import type { SimulatorDeviceType } from '@/types'
 
 const REFRESH_OPTIONS = [
@@ -32,15 +33,14 @@ export function MonitoringPage() {
   const refreshAll = useDeviceStore((s) => s.refreshAll)
   const [selectedDevices, setSelectedDevices] = useState<string[]>([])
   const [refreshInterval, setRefreshInterval] = useState('10000')
-  const [fetchError, setFetchError] = useState('')
+  // Removed local fetchError state
 
   useEffect(() => {
     const load = async () => {
       try {
         await refreshAll()
-        setFetchError('')
       } catch (err) {
-        setFetchError(err instanceof Error ? err.message : 'Failed to load telemetry')
+        console.warn('Failed to load telemetry in background:', err)
       }
     }
     load()
@@ -121,25 +121,33 @@ export function MonitoringPage() {
     return { current }
   }
 
-  const handleExport = (format: 'csv' | 'json') => {
-    const data = selectedDevices
-      .map((id) => telemetry[id])
-      .filter(Boolean)
-      .map((tel) => ({
-        timestamp: tel!.timestamp,
-        device_id: tel!.device_id,
-        value: tel!.device_type ? (getMetricValue(tel!.device_type, tel!) ?? 0) : 0,
-      }))
-    if (format === 'csv') exportToCSV(data, 'telemetry-export')
-    else exportToJSON(data, 'telemetry-export')
+  const handleExport = async (format: 'csv' | 'json') => {
+    if (selectedDevices.length === 0) {
+      useToastStore.getState().showInfo('Please select at least one device to export telemetry.')
+      return
+    }
+    try {
+      for (const id of selectedDevices) {
+        const blob = await exportTelemetryApi(id, format)
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `export_${id}.${format}`
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        window.URL.revokeObjectURL(url)
+      }
+    } catch (err) {
+      console.error('Failed to export telemetry data:', err)
+    }
   }
 
   const handleManualRefresh = async () => {
     try {
       await refreshAll()
-      setFetchError('')
     } catch (err) {
-      setFetchError(err instanceof Error ? err.message : 'Failed to refresh telemetry')
+      console.error('Failed to manually refresh telemetry:', err)
     }
   }
 
@@ -164,11 +172,7 @@ export function MonitoringPage() {
         </div>
       </div>
 
-      {fetchError && (
-        <div className="rounded-lg bg-red-100 px-4 py-3 text-sm text-red-800 border border-red-200">
-          {fetchError}
-        </div>
-      )}
+      {/* Telemetry errors logged to browser logs */}
 
       <Card>
         <CardHeader className="p-0">

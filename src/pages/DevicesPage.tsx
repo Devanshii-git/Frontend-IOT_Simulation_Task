@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Switch } from '@/components/ui/Switch'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useDeviceStore } from '@/store/deviceStore'
+import { useToastStore } from '@/store/toastStore'
 import { StatusPill } from '@/components/ui/StatusPill'
 import { SignalStrength } from '@/components/ui/SignalStrength'
 import type { DeviceType, DeviceProtocol } from '@/types'
@@ -109,6 +110,7 @@ export function DevicesPage() {
     setAdding(true)
     try {
       await addDevice(form)
+      useToastStore.getState().showSuccess('Device added successfully!')
       setShowAdd(false)
       setForm({
         name: '',
@@ -130,8 +132,9 @@ export function DevicesPage() {
     setDeletingId(id)
     try {
       await deleteDevice(id)
+      useToastStore.getState().showSuccess('Device deleted successfully!')
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete device')
+      console.error(err)
     } finally {
       setDeletingId(null)
     }
@@ -141,6 +144,7 @@ export function DevicesPage() {
     setTogglingId(id)
     try {
       await toggleDevice(id, checked)
+      useToastStore.getState().showSuccess(`Device simulation ${checked ? 'started' : 'stopped'} successfully.`)
     } catch (err) {
       console.error(err)
     } finally {

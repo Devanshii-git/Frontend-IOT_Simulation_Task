@@ -523,3 +523,20 @@ export async function bulkKillApi(ids: string[]): Promise<any> {
   }
   return data
 }
+
+export async function exportTelemetryApi(
+  deviceId: string,
+  format: 'csv' | 'json',
+  timeRange: string = '-24h'
+): Promise<Blob> {
+  const res = await httpClient.get('/export', {
+    params: {
+      device_id: deviceId,
+      format,
+      time_range: timeRange,
+    },
+    responseType: 'blob',
+  })
+  return res.data
+}
+

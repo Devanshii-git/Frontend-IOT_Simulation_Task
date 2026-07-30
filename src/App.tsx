@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { SplashScreen } from '@/pages/auth/SplashScreen'
+import { ToastContainer } from '@/components/ui/ToastContainer'
 
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage').then(m => ({ default: m.LoginPage })))
 const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage').then(m => ({ default: m.RegisterPage })))
@@ -63,6 +64,7 @@ function SplashGate({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <ThemeProvider>
+      <ToastContainer />
       <BrowserRouter>
         <SplashGate>
           <Suspense fallback={<PageLoader />}>

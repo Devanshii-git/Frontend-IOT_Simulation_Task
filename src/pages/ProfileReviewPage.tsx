@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/Button'
 import { StatusPill } from '@/components/ui/StatusPill'
 import { getPendingProfilesApi, approveProfileApi, rejectProfileApi } from '@/services/api'
+import { useToastStore } from '@/store/toastStore'
 import type { PendingProfile } from '@/types'
 import { 
   Check, 
@@ -23,7 +24,7 @@ export function ProfileReviewPage() {
   const [selectedProfile, setSelectedProfile] = useState<PendingProfile | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  // Removed local notification state
   const [copied, setCopied] = useState<boolean>(false)
 
   // Search & Filter States
@@ -51,7 +52,7 @@ export function ProfileReviewPage() {
       }
     } catch (err: any) {
       console.error(err)
-      setNotification({ type: 'error', message: err.message || 'Failed to load profiles.' })
+      useToastStore.getState().showError(err.message || 'Failed to load profiles.')
     } finally {
       setLoading(false)
     }
@@ -77,13 +78,7 @@ export function ProfileReviewPage() {
     }
   }, [selectedProfile])
 
-  // Show auto-dismiss notifications
-  useEffect(() => {
-    if (notification) {
-      const timer = setTimeout(() => setNotification(null), 4000)
-      return () => clearTimeout(timer)
-    }
-  }, [notification])
+  // Removed local notification auto-dismiss effect
 
   const handleEditorChange = (val: string) => {
     setEditorText(val)
@@ -106,7 +101,7 @@ export function ProfileReviewPage() {
     try {
       setActionLoading(id)
       const res = await approveProfileApi(id, updatedData)
-      setNotification({ type: 'success', message: res.message })
+      useToastStore.getState().showSuccess(res.message || 'Profile approved successfully!')
       // Filter out approved profile from local state
       const nextProfiles = profiles.filter((p) => p.id !== id)
       setProfiles(nextProfiles)
@@ -115,7 +110,7 @@ export function ProfileReviewPage() {
       }
     } catch (err: any) {
       console.error(err)
-      setNotification({ type: 'error', message: err.message || 'Failed to approve profile.' })
+      useToastStore.getState().showError(err.message || 'Failed to approve profile.')
     } finally {
       setActionLoading(null)
     }
@@ -125,7 +120,7 @@ export function ProfileReviewPage() {
     try {
       setActionLoading(id)
       const res = await rejectProfileApi(id)
-      setNotification({ type: 'success', message: res.message })
+      useToastStore.getState().showSuccess(res.message || 'Profile rejected successfully!')
       // Filter out rejected profile from state
       const nextProfiles = profiles.filter((p) => p.id !== id)
       setProfiles(nextProfiles)
@@ -134,7 +129,7 @@ export function ProfileReviewPage() {
       }
     } catch (err: any) {
       console.error(err)
-      setNotification({ type: 'error', message: err.message || 'Failed to reject profile.' })
+      useToastStore.getState().showError(err.message || 'Failed to reject profile.')
     } finally {
       setActionLoading(null)
     }
@@ -206,17 +201,7 @@ export function ProfileReviewPage() {
 
   return (
     <div className="flex flex-col gap-6 md:gap-8 select-none">
-      {/* Toast Notification */}
-      {notification && (
-        <div className={`fixed top-20 right-4 z-50 flex items-center gap-2.5 rounded-lg px-4 py-3 shadow-lg border backdrop-blur-md animate-in slide-in-from-right duration-250 ${
-          notification.type === 'success' 
-            ? 'bg-status-online/15 border-status-online text-status-online' 
-            : 'bg-status-error/15 border-status-error text-status-error'
-        }`}>
-          {notification.type === 'success' ? <ShieldCheck className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
-          <span className="text-sm font-semibold">{notification.message}</span>
-        </div>
-      )}
+      {/* Toast Notification handled globally */}
 
       {/* Header section */}
       <div>
