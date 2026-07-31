@@ -176,9 +176,14 @@ const typeDisplayNames: Record<string, string> = {
   speaker: 'Speaker',
 }
 
+let _typeCache: Record<string, string> = {}
+let _protoCache: Record<string, string> = {}
+
 const getOrCreateDeviceType = async (type: string): Promise<string> => {
   const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
   const displayName = typeDisplayNames[type] ?? type
+  if (_typeCache[displayName]) return _typeCache[displayName]
+
   try {
     const res = await httpClient.get(`${rootUrl}/device-types`)
     const list = res.data
@@ -186,12 +191,16 @@ const getOrCreateDeviceType = async (type: string): Promise<string> => {
       dt.name.toLowerCase().includes(type.toLowerCase()) ||
       dt.name.toLowerCase().includes(displayName.toLowerCase())
     )
-    if (found) return found.id
+    if (found) {
+      _typeCache[displayName] = found.id
+      return found.id
+    }
 
     const createRes = await httpClient.post(`${rootUrl}/device-types`, {
       name: displayName,
       description: `Device type for ${type}`,
     })
+    _typeCache[displayName] = createRes.data.id
     return createRes.data.id
   } catch (e) {
     console.error('Error getting or creating device type', e)
@@ -201,16 +210,22 @@ const getOrCreateDeviceType = async (type: string): Promise<string> => {
 
 const getOrCreateProtocol = async (proto: string): Promise<string> => {
   const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
+  if (_protoCache[proto]) return _protoCache[proto]
+
   try {
     const res = await httpClient.get(`${rootUrl}/protocols`)
     const list = res.data
     const found = list.find((p: any) => p.name.toUpperCase() === proto.toUpperCase())
-    if (found) return found.id
+    if (found) {
+      _protoCache[proto] = found.id
+      return found.id
+    }
 
     const createRes = await httpClient.post(`${rootUrl}/protocols`, {
       name: proto,
       description: `Protocol ${proto}`,
     })
+    _protoCache[proto] = createRes.data.id
     return createRes.data.id
   } catch (e) {
     console.error('Error getting or creating protocol', e)
@@ -483,13 +498,8 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   deleteDevice: async (id) => {
     const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
 
-    if (get().runningDevices.includes(id)) {
-      try {
-        await get().stopSimulation(id)
-      } catch (e) {
-        console.warn('Failed to stop simulation before deleting', e)
-      }
-    }
+    // The backend DELETE /devices endpoint automatically kills the VDR simulation.
+    // We do not need to call stopSimulation here manually.
 
     try {
       const configsRes = await httpClient.get(`${rootUrl}/device-configurations`)
@@ -667,40 +677,45 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
       const userId = await getOrCreateUser()
 
-      for (const dev of devicesToSpawn) {
-        try {
-          const deviceTypeId = await getOrCreateDeviceType(dev.type)
-          const protocolId = await getOrCreateProtocol(dev.protocol)
+      // Process in chunks of 10 to avoid overwhelming the backend
+      const chunkSize = 10;
+      for (let i = 0; i < devicesToSpawn.length; i += chunkSize) {
+        const chunk = devicesToSpawn.slice(i, i + chunkSize);
+        await Promise.all(chunk.map(async (dev) => {
+          try {
+            const deviceTypeId = await getOrCreateDeviceType(dev.type)
+            const protocolId = await getOrCreateProtocol(dev.protocol)
 
-          // 1. Create the Device in DB
-          const devRes = await httpClient.post(`${rootUrl}/devices`, {
-            user_id: userId,
-            device_type_id: deviceTypeId,
-            protocol_id: protocolId,
-            device_name: dev.name,
-            status: 'CREATED',
-            azure_device_id: null,
-          })
-          const dbDevice = devRes.data
+            // 1. Create the Device in DB
+            const devRes = await httpClient.post(`${rootUrl}/devices`, {
+              user_id: userId,
+              device_type_id: deviceTypeId,
+              protocol_id: protocolId,
+              device_name: dev.name,
+              status: 'CREATED',
+              azure_device_id: null,
+            })
+            const dbDevice = devRes.data
 
-          // 2. Create Configuration properties in DB
-          await httpClient.post(`${rootUrl}/device-configurations`, {
-            device_id: dbDevice.id,
-            properties: {
-              location: dev.location,
-              ipAddress: dev.ip,
-            },
-          })
+            // 2. Create Configuration properties in DB
+            await httpClient.post(`${rootUrl}/device-configurations`, {
+              device_id: dbDevice.id,
+              properties: {
+                location: dev.location,
+                ipAddress: dev.ip,
+              },
+            })
 
-          // 3. Spawn/Start simulation in VDR via simulation start
-          await httpClient.post(`${DEVICE_SIMULATOR_BASE_URL}/simulation/start`, {
-            device_id: dbDevice.id,
-            device_type: dev.type as SimulatorDeviceType,
-            interval: 5
-          })
-        } catch (innerErr) {
-          console.error(`Failed to register or start device ${dev.name}`, innerErr)
-        }
+            // 3. Spawn/Start simulation in VDR via simulation start
+            await httpClient.post(`${DEVICE_SIMULATOR_BASE_URL}/simulation/start`, {
+              device_id: dbDevice.id,
+              device_type: dev.type as SimulatorDeviceType,
+              interval: 5
+            })
+          } catch (innerErr) {
+            console.error(`Failed to register or start device ${dev.name}`, innerErr)
+          }
+        }))
       }
     } catch (e) {
       console.error('Error bulk spawning devices on Live Backend / VDR', e)
@@ -725,17 +740,19 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
 
     try {
 
-      for (const id of ids) {
-        try {
-          await httpClient.post(`${DEVICE_SIMULATOR_BASE_URL}/simulation/stop`, { device_id: id })
-        } catch (simErr) {
-          console.warn(`Failed to stop simulation for device ${id}`, simErr)
-        }
-        try {
-          await httpClient.delete(`/devices/${id}`)
-        } catch (dbErr) {
-          console.warn(`Failed to delete device ${id} from database`, dbErr)
-        }
+      const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
+      const chunkSize = 10;
+      for (let i = 0; i < ids.length; i += chunkSize) {
+        const chunk = ids.slice(i, i + chunkSize);
+        await Promise.all(chunk.map(async (id) => {
+          try {
+            // Note: The backend DELETE /devices endpoint now automatically handles killing the VDR simulation.
+            // We no longer need to call /simulation/stop manually!
+            await httpClient.delete(`${rootUrl}/devices/${id}`)
+          } catch (dbErr) {
+            console.warn(`Failed to delete device ${id} from database`, dbErr)
+          }
+        }))
       }
     } catch (e) {
       console.error('Error bulk killing devices on Live Backend', e)
