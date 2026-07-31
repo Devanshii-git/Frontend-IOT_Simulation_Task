@@ -106,7 +106,7 @@ export function SimulationPage() {
   const [historyLoading, setHistoryLoading] = useState(false)
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout
+    let timeoutId: ReturnType<typeof setTimeout>
     let isMounted = true
 
     const load = async () => {
@@ -150,7 +150,7 @@ export function SimulationPage() {
       return
     }
 
-    let timeoutId: NodeJS.Timeout
+    let timeoutId: ReturnType<typeof setTimeout>
     let isMounted = true
 
     const loadHistory = async () => {
