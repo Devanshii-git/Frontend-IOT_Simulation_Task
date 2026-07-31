@@ -63,8 +63,7 @@ function formatChartTimestamp(ts: string): string {
   }
 }
 
-function DeviceMetrics({ deviceType, telemetry }: {
-  deviceType: SimulatorDeviceType
+function DeviceMetrics({ telemetry }: {
   telemetry: LatestTelemetry
 }) {
   const ignoreKeys = ['device_id', 'device_type', 'timestamp']
@@ -206,7 +205,7 @@ export function SimulationPage() {
                 {tel?.timestamp && (
                   <p className="mt-3 text-xs text-text-muted">{formatSimulatorTimestamp(tel.timestamp)}</p>
                 )}
-                {deviceType && tel && <DeviceMetrics deviceType={deviceType} telemetry={tel} />}
+                {deviceType && tel && <DeviceMetrics telemetry={tel} />}
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); handleStop(deviceId) }}
