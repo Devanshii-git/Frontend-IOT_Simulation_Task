@@ -536,7 +536,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   fetchRunningDevices: async () => {
     try {
       const res = await httpClient.get(`${DEVICE_SIMULATOR_BASE_URL}/simulation/running`)
-      const devices: string[] = res.data.running_devices ?? []
+      const devices = res.data.running_devices || []
       set({ runningDevices: devices })
       return devices
     } catch (e) {
@@ -548,41 +548,48 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   },
 
   fetchTelemetryForDevices: async (deviceIds) => {
-    const entries = await Promise.all(
-      deviceIds.map(async (deviceId) => {
-        try {
-          const res = await httpClient.get(`${TELEMETRY_BASE_URL}/telemetry/latest/${deviceId}`)
-          const data = res.data
-          const telemetry: LatestTelemetry = {
-            device_id: deviceId,
-            device_type: data.device_type,
-            temperature: data.temperature,
-            battery: data.battery_level ?? data.battery,
-            volume: data.volume,
-            brightness: data.brightness,
-            fps: data.fps,
-            timestamp: data.timestamp ?? new Date().toISOString(),
-          }
-          return [deviceId, telemetry] as const
-        } catch {
-          const device = get().devices.find(d => d.id === deviceId)
-          const devType = device?.type ?? 'unknown'
-          const simType: SimulatorDeviceType = devType as SimulatorDeviceType
+    if (deviceIds.length === 0) return
 
-          const mockTelemetry: LatestTelemetry = {
-            device_id: deviceId,
-            device_type: simType,
-            temperature: simType === 'temperature_sensor' ? 0 : undefined,
-            battery: 0,
-            volume: simType === 'speaker' ? 0 : undefined,
-            brightness: simType === 'projector' ? 0 : undefined,
-            fps: simType === 'camera' ? 0 : undefined,
-            timestamp: new Date().toISOString(),
-          }
-          return [deviceId, mockTelemetry] as const
+    let bulkData: Record<string, any> = {}
+    try {
+      const res = await httpClient.post(`${TELEMETRY_BASE_URL}/telemetry/latest/bulk`, deviceIds)
+      bulkData = res.data || {}
+    } catch (e) {
+      console.warn('Failed to bulk fetch telemetry, falling back to mock generator', e)
+    }
+
+    const entries = deviceIds.map((deviceId) => {
+      const data = bulkData[deviceId]
+      if (data) {
+        const telemetry: LatestTelemetry = {
+          device_id: deviceId,
+          device_type: data.device_type,
+          temperature: data.temperature,
+          battery: data.battery_level ?? data.battery,
+          volume: data.volume,
+          brightness: data.brightness,
+          fps: data.fps,
+          timestamp: data.timestamp ?? new Date().toISOString(),
         }
-      }),
-    )
+        return [deviceId, telemetry] as const
+      } else {
+        const device = get().devices.find(d => d.id === deviceId)
+        const devType = device?.type ?? 'unknown'
+        const simType: SimulatorDeviceType = devType as SimulatorDeviceType
+
+        const mockTelemetry: LatestTelemetry = {
+          device_id: deviceId,
+          device_type: simType,
+          temperature: simType === 'temperature_sensor' ? 0 : undefined,
+          battery: 0,
+          volume: simType === 'speaker' ? 0 : undefined,
+          brightness: simType === 'projector' ? 0 : undefined,
+          fps: simType === 'camera' ? 0 : undefined,
+          timestamp: new Date().toISOString(),
+        }
+        return [deviceId, mockTelemetry] as const
+      }
+    })
 
     const nextMap: Record<string, LatestTelemetry> = {}
     for (const [id, telemetry] of entries) {
@@ -723,7 +730,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
     }
 
     try {
-      const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
+
       for (const id of ids) {
         try {
           await httpClient.post(`${DEVICE_SIMULATOR_BASE_URL}/simulation/stop`, { device_id: id })
@@ -731,7 +738,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
           console.warn(`Failed to stop simulation for device ${id}`, simErr)
         }
         try {
-          await httpClient.delete(`${rootUrl}/devices/${id}`)
+          await httpClient.delete(`/devices/${id}`)
         } catch (dbErr) {
           console.warn(`Failed to delete device ${id} from database`, dbErr)
         }
