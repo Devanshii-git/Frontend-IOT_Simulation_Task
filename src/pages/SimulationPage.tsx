@@ -17,7 +17,7 @@ import {
   formatSimulatorTimestamp,
   getPrimaryMetricKey,
 } from '@/utils/simulatorDevices'
-import type { LatestTelemetry, SimulatorDeviceType } from '@/types'
+import type { LatestTelemetry } from '@/types'
 import { cn } from '@/utils/cn'
 
 type TimeRange = '-30m' | '-1h' | '-24h'
