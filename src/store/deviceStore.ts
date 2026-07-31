@@ -133,8 +133,8 @@ const mapDeviceTypeName = (name: string): DeviceType => {
   if (lower.includes('speaker') || lower.includes('audio')) return 'speaker'
   const normalized = lower.replace(/\s+/g, '_') as DeviceType
   if (KNOWN_DEVICE_TYPES.includes(normalized)) return normalized
-  console.warn(`Unknown device type name: "${name}", could not map to a known type`)
-  return normalized
+  console.warn(`Unknown device type name: "${name}", defaulting to generic_device`)
+  return 'generic_device'
 }
 
 const getOrCreateUser = async (): Promise<string> => {

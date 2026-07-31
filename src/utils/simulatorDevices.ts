@@ -6,6 +6,7 @@ export const SIMULATOR_DEVICE_TYPE_OPTIONS: { value: SimulatorDeviceType; label:
   { value: 'camera', label: 'Camera' },
   { value: 'microphone', label: 'Microphone' },
   { value: 'projector', label: 'Projector' },
+  { value: 'generic_device', label: 'Generic Device' },
 ]
 
 export const SIMULATOR_DEVICE_TYPE_LABELS: Record<SimulatorDeviceType, string> = {
@@ -14,6 +15,7 @@ export const SIMULATOR_DEVICE_TYPE_LABELS: Record<SimulatorDeviceType, string> =
   camera: 'Camera',
   microphone: 'Microphone',
   projector: 'Projector',
+  generic_device: 'Generic Device',
 }
 
 export function formatSimulatorTimestamp(ts: string): string {
@@ -27,6 +29,7 @@ export function formatSimulatorTimestamp(ts: string): string {
 export function getPrimaryMetricKey(deviceType: SimulatorDeviceType): keyof LatestTelemetry {
   switch (deviceType) {
     case 'temperature_sensor':
+    case 'generic_device':
       return 'temperature'
     case 'speaker':
       return 'volume'

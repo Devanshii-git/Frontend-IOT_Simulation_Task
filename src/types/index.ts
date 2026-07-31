@@ -4,6 +4,7 @@ export type SimulatorDeviceType =
   | 'camera'
   | 'microphone'
   | 'projector'
+  | 'generic_device'
 
 export interface LatestTelemetry {
   device_id: string
@@ -22,6 +23,7 @@ export type DeviceType =
   | 'microphone'
   | 'speaker'
   | 'temperature_sensor'
+  | 'generic_device'
 
 export type DeviceStatus = 'online' | 'offline' | 'warning'
 
