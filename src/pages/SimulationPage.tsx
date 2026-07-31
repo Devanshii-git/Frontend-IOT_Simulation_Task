@@ -106,16 +106,27 @@ export function SimulationPage() {
   const [historyLoading, setHistoryLoading] = useState(false)
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout
+    let isMounted = true
+
     const load = async () => {
       try {
         await refreshAll()
       } catch (err) {
         console.warn('Failed to load running simulations in background:', err)
       }
+      
+      if (isMounted) {
+        timeoutId = setTimeout(load, 15000)
+      }
     }
+    
     load()
-    const interval = setInterval(load, 10000)
-    return () => clearInterval(interval)
+    
+    return () => {
+      isMounted = false
+      if (timeoutId) clearTimeout(timeoutId)
+    }
   }, [refreshAll])
 
   const fetchHistory = useCallback(async (deviceId: string, range: TimeRange) => {
@@ -138,7 +149,23 @@ export function SimulationPage() {
       setHistoryData([])
       return
     }
-    fetchHistory(selectedDeviceId, timeRange)
+
+    let timeoutId: NodeJS.Timeout
+    let isMounted = true
+
+    const loadHistory = async () => {
+      await fetchHistory(selectedDeviceId, timeRange)
+      if (isMounted) {
+        timeoutId = setTimeout(loadHistory, 15000)
+      }
+    }
+
+    loadHistory()
+
+    return () => {
+      isMounted = false
+      if (timeoutId) clearTimeout(timeoutId)
+    }
   }, [selectedDeviceId, timeRange, fetchHistory])
 
   const handleStop = async (deviceId: string) => {

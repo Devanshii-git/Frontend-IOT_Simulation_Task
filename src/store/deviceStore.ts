@@ -93,7 +93,7 @@ interface DeviceState {
   setWizardConfig: (config: { startingIp: string; startingPort: number; startingMac: string }) => void
   resetWizard: () => void
 
-  fetchDevices: () => Promise<void>
+  fetchDevices: (background?: boolean) => Promise<void>
   addDevice: (payload: Omit<Device, 'id' | 'status' | 'isToggledOn' | 'signalStrength' | 'lastPing'>) => Promise<void>
   toggleDevice: (id: string, isToggledOn: boolean) => Promise<void>
   updateDeviceDetails: (id: string, payload: Partial<Device>) => Promise<void>
@@ -306,8 +306,8 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       }
     }),
 
-  fetchDevices: async () => {
-    set({ loading: true })
+  fetchDevices: async (background = false) => {
+    if (!background) set({ loading: true })
     if (USE_MOCK_API) {
       if (get().devices.length === 0) {
         set({
@@ -315,7 +315,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
           runningDevices: MOCK_DEVICES.filter((d) => d.isToggledOn).map((d) => d.id),
         })
       }
-      set({ loading: false })
+      if (!background) set({ loading: false })
       return
     }
     const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
@@ -336,19 +336,11 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       const protosMap = new Map<string, string>(protocols.map((p: any) => [p.id, p.name]))
       const configsMap = new Map<string, Record<string, any>>(configurations.map((c: any) => [c.device_id, c.properties]))
 
-      let activeRunning: string[] = []
-      try {
-        const simRes = await httpClient.get(`${DEVICE_SIMULATOR_BASE_URL}/simulation/running`)
-        activeRunning = simRes.data.running_devices ?? []
-      } catch (e) {
-        console.warn('Simulation server unreachable for statuses', e)
-      }
-
       const mappedDevices: Device[] = rawDevices.map((d: any) => {
         const typeName = typesMap.get(d.device_type_id) ?? d.device_type_id ?? 'unknown'
         const protoName = protosMap.get(d.protocol_id) ?? 'HTTP'
         const properties = configsMap.get(d.id) ?? {}
-        const isRunning = activeRunning.includes(d.id)
+        const isRunning = d.status === 'RUNNING'
 
         return {
           id: d.id,
@@ -366,13 +358,14 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
 
       const spawnedFleet = get().spawnedFleet || []
       const mergedDevices = [...mappedDevices, ...spawnedFleet]
-      const mergedRunning = Array.from(new Set([...activeRunning, ...spawnedFleet.map(d => d.id)]))
+      const mergedRunning = mergedDevices.filter(d => d.isToggledOn).map(d => d.id)
+      
       set({ devices: mergedDevices, runningDevices: mergedRunning })
     } catch (err) {
       console.error('Error fetching devices, setting empty', err)
       set({ devices: [], runningDevices: [] })
     } finally {
-      set({ loading: false })
+      if (!background) set({ loading: false })
     }
   },
 
@@ -542,17 +535,11 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   },
 
   fetchRunningDevices: async () => {
-    try {
-      const res = await httpClient.get(`${DEVICE_SIMULATOR_BASE_URL}/simulation/running`)
-      const devices = res.data.running_devices || []
-      set({ runningDevices: devices })
-      return devices
-    } catch (e) {
-      console.warn('Simulation server offline, using local running devices list:', e)
-      const devices = get().devices.filter(d => d.isToggledOn).map(d => d.id)
-      set({ runningDevices: devices })
-      return devices
-    }
+    // Rely on the PostgreSQL database status instead of the VDR simulator status.
+    // The device list is kept in sync with the DB in fetchDevices().
+    const devices = get().devices.filter(d => d.isToggledOn).map(d => d.id)
+    set({ runningDevices: devices })
+    return devices
   },
 
   fetchTelemetryForDevices: async (deviceIds) => {
@@ -608,6 +595,9 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
 
   refreshAll: async () => {
     try {
+      // Fetch latest devices from postgres to ensure we have the true "RUNNING" status (in background mode)
+      await get().fetchDevices(true)
+      
       const devices = await get().fetchRunningDevices()
       await get().fetchTelemetryForDevices(devices)
     } catch (e) {
