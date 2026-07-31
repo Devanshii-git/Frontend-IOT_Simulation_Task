@@ -63,33 +63,40 @@ const DEVICE_PROFILES_TEMPLATES = {
     manufacturer: 'Honeywell',
     model: 'T9-Smart',
     metrics: ['temperature', 'humidity', 'battery']
+  },
+  generic_device: {
+    name: 'Generic AI Device',
+    protocol: 'HTTP' as const,
+    manufacturer: 'Unknown',
+    model: 'Gen-01',
+    metrics: ['temperature', 'battery', 'status']
   }
 }
 
 const ROOM_PRESETS = [
   {
     name: 'Conference Room',
-    deviceCounts: { projector: 1, speaker: 2, microphone: 1, camera: 1, temperature_sensor: 1 }
+    deviceCounts: { projector: 1, speaker: 2, microphone: 1, camera: 1, temperature_sensor: 1, generic_device: 0 }
   },
   {
     name: 'Boardroom',
-    deviceCounts: { projector: 1, speaker: 4, microphone: 2, camera: 1, temperature_sensor: 0 }
+    deviceCounts: { projector: 1, speaker: 4, microphone: 2, camera: 1, temperature_sensor: 0, generic_device: 0 }
   },
   {
     name: 'Huddle Space',
-    deviceCounts: { projector: 0, speaker: 1, microphone: 1, camera: 1, temperature_sensor: 0 }
+    deviceCounts: { projector: 0, speaker: 1, microphone: 1, camera: 1, temperature_sensor: 0, generic_device: 0 }
   },
   {
     name: 'Auditorium',
-    deviceCounts: { projector: 2, speaker: 8, microphone: 4, camera: 2, temperature_sensor: 2 }
+    deviceCounts: { projector: 2, speaker: 8, microphone: 4, camera: 2, temperature_sensor: 2, generic_device: 0 }
   },
   {
     name: 'Classroom',
-    deviceCounts: { projector: 1, speaker: 2, microphone: 1, camera: 0, temperature_sensor: 1 }
+    deviceCounts: { projector: 1, speaker: 2, microphone: 1, camera: 0, temperature_sensor: 1, generic_device: 0 }
   },
   {
     name: 'Custom Room',
-    deviceCounts: { projector: 0, speaker: 0, microphone: 0, camera: 0, temperature_sensor: 0 }
+    deviceCounts: { projector: 0, speaker: 0, microphone: 0, camera: 0, temperature_sensor: 0, generic_device: 0 }
   }
 ]
 

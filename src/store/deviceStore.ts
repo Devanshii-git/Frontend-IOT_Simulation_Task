@@ -231,7 +231,8 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
         speaker: 2,
         microphone: 1,
         camera: 1,
-        temperature_sensor: 1
+        temperature_sensor: 1,
+        generic_device: 0
       }
     },
     {
@@ -242,7 +243,8 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
         speaker: 4,
         microphone: 2,
         camera: 1,
-        temperature_sensor: 0
+        temperature_sensor: 0,
+        generic_device: 0
       }
     }
   ],
@@ -263,7 +265,8 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
           speaker: 2,
           microphone: 1,
           camera: 1,
-          temperature_sensor: 1
+          temperature_sensor: 1,
+          generic_device: 0
         }
       },
       {
@@ -274,7 +277,8 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
           speaker: 4,
           microphone: 2,
           camera: 1,
-          temperature_sensor: 0
+          temperature_sensor: 0,
+          generic_device: 0
         }
       }
     ],
