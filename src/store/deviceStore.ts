@@ -125,16 +125,20 @@ const defaultFilters: DeviceFilters = { type: 'all', status: 'all', location: ''
 const KNOWN_DEVICE_TYPES: DeviceType[] = ['temperature_sensor', 'projector', 'camera', 'microphone', 'speaker']
 
 const mapDeviceTypeName = (name: string): DeviceType => {
-  const lower = name.toLowerCase()
-  if (lower.includes('temp') || lower.includes('thermostat')) return 'temperature_sensor'
-  if (lower.includes('projector')) return 'projector'
-  if (lower.includes('camera') || lower.includes('cctv')) return 'camera'
-  if (lower.includes('mic')) return 'microphone'
-  if (lower.includes('speaker') || lower.includes('audio')) return 'speaker'
-  const normalized = lower.replace(/\s+/g, '_') as DeviceType
+  if (!name) return 'generic_device'
+  const normalized = name.toLowerCase() as DeviceType
   if (KNOWN_DEVICE_TYPES.includes(normalized)) return normalized
-  console.warn(`Unknown device type name: "${name}", defaulting to generic_device`)
-  return 'generic_device'
+  
+  // Try keyword mapping for common types that might not match exact casing/spacing
+  if (normalized.includes('temp') || normalized.includes('thermostat')) return 'temperature_sensor'
+  if (normalized.includes('proj')) return 'projector'
+  if (normalized.includes('cam')) return 'camera'
+  if (normalized.includes('mic')) return 'microphone'
+  if (normalized.includes('speak') || normalized.includes('audio')) return 'speaker'
+
+  // If it's an AI-generated type that we don't know, preserve its name
+  // The UI will now dynamically render it
+  return name as DeviceType
 }
 
 const getOrCreateUser = async (): Promise<string> => {
@@ -603,15 +607,11 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   },
 
   refreshAll: async () => {
-    set({ loading: true })
     try {
-      await get().fetchDevices()
       const devices = await get().fetchRunningDevices()
       await get().fetchTelemetryForDevices(devices)
     } catch (e) {
       console.error('Error refreshing all store status', e)
-    } finally {
-      set({ loading: false })
     }
   },
 

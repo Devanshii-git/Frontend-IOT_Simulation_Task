@@ -67,51 +67,28 @@ function DeviceMetrics({ deviceType, telemetry }: {
   deviceType: SimulatorDeviceType
   telemetry: LatestTelemetry
 }) {
+  const ignoreKeys = ['device_id', 'device_type', 'timestamp']
+  const metrics = Object.entries(telemetry).filter(([k, v]) => !ignoreKeys.includes(k) && (typeof v === 'number' || typeof v === 'string'))
+
   return (
     <div className="mt-4 space-y-1.5 text-sm">
-      {deviceType === 'temperature_sensor' && (
-        <>
-          {telemetry.temperature != null && (
-            <p><span className="text-text-muted">Temperature:</span> <span className="font-semibold">{telemetry.temperature}°C</span></p>
-          )}
-          {telemetry.battery != null && (
-            <p><span className="text-text-muted">Battery:</span> <span className="font-semibold">{telemetry.battery}%</span></p>
-          )}
-        </>
-      )}
-      {deviceType === 'speaker' && (
-        <>
-          {telemetry.volume != null && (
-            <p><span className="text-text-muted">Volume:</span> <span className="font-semibold">{telemetry.volume}</span></p>
-          )}
-          {telemetry.battery != null && (
-            <p><span className="text-text-muted">Battery:</span> <span className="font-semibold">{telemetry.battery}%</span></p>
-          )}
-        </>
-      )}
-      {deviceType === 'camera' && (
-        <>
-          {telemetry.fps != null && (
-            <p><span className="text-text-muted">FPS:</span> <span className="font-semibold">{telemetry.fps}</span></p>
-          )}
-          {telemetry.battery != null && (
-            <p><span className="text-text-muted">Battery:</span> <span className="font-semibold">{telemetry.battery}%</span></p>
-          )}
-        </>
-      )}
-      {deviceType === 'microphone' && telemetry.battery != null && (
-        <p><span className="text-text-muted">Battery:</span> <span className="font-semibold">{telemetry.battery}%</span></p>
-      )}
-      {deviceType === 'projector' && (
-        <>
-          {telemetry.brightness != null && (
-            <p><span className="text-text-muted">Brightness:</span> <span className="font-semibold">{telemetry.brightness}</span></p>
-          )}
-          {telemetry.battery != null && (
-            <p><span className="text-text-muted">Battery:</span> <span className="font-semibold">{telemetry.battery}%</span></p>
-          )}
-        </>
-      )}
+      {metrics.map(([key, value]) => {
+        let label = key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')
+        let formattedValue = typeof value === 'number' ? (Number.isInteger(value) ? value : value.toFixed(1)) : value
+        
+        if (key === 'temperature') {
+          formattedValue = `${formattedValue}°C`
+        } else if (key === 'battery' || key === 'volume' || key === 'audio_level') {
+          formattedValue = `${formattedValue}%`
+        }
+
+        return (
+          <p key={key}>
+            <span className="text-text-muted">{label}:</span>{' '}
+            <span className="font-semibold">{formattedValue}</span>
+          </p>
+        )
+      })}
     </div>
   )
 }
