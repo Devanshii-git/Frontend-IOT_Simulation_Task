@@ -705,9 +705,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       console.error('Error bulk spawning devices on Live Backend / VDR', e)
     }
 
-    set(s => ({
-      spawnedFleet: [...s.spawnedFleet, ...newDevs]
-    }))
+    // In Live mode, all devices are fetched from the database, so we do not append them to spawnedFleet
     await get().fetchDevices()
   },
 
