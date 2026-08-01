@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useDeviceStore } from '@/store/deviceStore'
 import { useToastStore } from '@/store/toastStore'
+import { USE_MOCK_API } from '@/config/api'
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -111,7 +112,6 @@ export function FleetGeneratorWizard() {
   const rooms = useDeviceStore((s) => s.wizardRooms)
   const setRooms = useDeviceStore((s) => s.setWizardRooms)
   const formData = useDeviceStore((s) => s.wizardConfig)
-  const setFormData = useDeviceStore((s) => s.setWizardConfig)
 
   const [step, setStep] = useState(1)
   const [roomCountToAdd, setRoomCountToAdd] = useState<number | ''>(1)
@@ -162,10 +162,6 @@ export function FleetGeneratorWizard() {
       }
       return r
     }))
-  }
-
-  const updateField = (key: string, val: any) => {
-    setFormData({ ...formData, [key]: val })
   }
 
   // Helpers to calculate IP increment
@@ -255,10 +251,13 @@ export function FleetGeneratorWizard() {
       // Delay to simulate spawning
       await new Promise(r => setTimeout(r, 400))
       
+      const ipLog = USE_MOCK_API ? `${dev.ip}:${dev.port}` : 'Auto-Assigning';
+      const macLog = USE_MOCK_API ? `MAC: ${dev.mac}` : 'IP & MAC Auto-Assigned by BE';
+
       setDeployLogs(prev => [
         ...prev,
-        `[INFO] [${dev.location}] Spawning ${dev.type.toUpperCase()} '${dev.name}' on IP ${dev.ip}:${dev.port}...`,
-        `[SUCCESS] Spawned successfully (MAC: ${dev.mac}, protocol: ${dev.protocol}).`
+        `[INFO] [${dev.location}] Spawning ${dev.type.toUpperCase()} '${dev.name}' on IP ${ipLog}...`,
+        `[SUCCESS] Spawned successfully (${macLog}, protocol: ${dev.protocol}).`
       ])
       
       setProgress(Math.round(((i + 1) / devicesToSpawn.length) * 100))
@@ -306,8 +305,7 @@ export function FleetGeneratorWizard() {
       <div className="flex items-center justify-between border border-border bg-bg-surface p-4 rounded-lg">
         {[
           { step: 1, label: 'Rooms & Devices', icon: Home },
-          { step: 2, label: 'Configure Fleet Settings', icon: Workflow },
-          { step: 3, label: 'Deploy & Boot', icon: Play }
+          { step: 2, label: 'Deploy & Boot', icon: Play }
         ].map((item) => (
           <div key={item.step} className="flex items-center gap-3">
             <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold ${
@@ -322,7 +320,7 @@ export function FleetGeneratorWizard() {
             <span className={`text-xs font-semibold hidden sm:inline ${step === item.step ? 'text-text-primary' : 'text-text-muted'}`}>
               {item.label}
             </span>
-            {item.step < 3 && <div className="h-px w-12 bg-border hidden sm:block" />}
+            {item.step < 2 && <div className="h-px w-12 bg-border hidden sm:block" />}
           </div>
         ))}
       </div>
@@ -493,107 +491,73 @@ export function FleetGeneratorWizard() {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <h2 className="text-base font-bold text-text-primary">Step 2: Fleet IP and Naming Parameters</h2>
-              <p className="text-xs text-text-muted">Define the base addressing metrics. The wizard will dynamically map unique endpoints for all simulated devices.</p>
-
-              <SpotlightCard spotlightColor="rgba(99, 102, 241, 0.05)">
-                <CardContent className="p-5 grid gap-4 md:grid-cols-3">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-text-muted uppercase">Starting IP Address</label>
-                    <Input
-                      value={formData.startingIp}
-                      onChange={(e) => updateField('startingIp', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-text-muted uppercase">Starting Port</label>
-                    <Input
-                      type="number"
-                      value={formData.startingPort}
-                      onChange={(e) => updateField('startingPort', parseInt(e.target.value) || 1000)}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-text-muted uppercase">Starting MAC Address</label>
-                    <Input
-                      value={formData.startingMac}
-                      onChange={(e) => updateField('startingMac', e.target.value)}
-                    />
-                  </div>
-                </CardContent>
-              </SpotlightCard>
-
-              {/* Dynamic Device Preview List */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-text-primary flex items-center gap-1.5">
-                    Allocation Preview <span className="text-xs font-normal text-text-muted">({totalDevices} Devices total)</span>
-                  </h3>
-                </div>
-
-                <div className="border border-border rounded-lg overflow-hidden bg-bg-surface">
-                  <div className="max-h-80 overflow-y-auto scrollbar-thin">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead className="bg-bg-elevated/50 text-text-muted sticky top-0 border-b border-border z-10">
-                        <tr>
-                          <th className="p-3 font-semibold">Location (Room)</th>
-                          <th className="p-3 font-semibold">Generated Device Name</th>
-                          <th className="p-3 font-semibold">Type</th>
-                          <th className="p-3 font-semibold">Protocol</th>
-                          <th className="p-3 font-semibold">IP Endpoint</th>
-                          <th className="p-3 font-semibold">MAC Address</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/40">
-                        {devicesToSpawn.map((dev) => (
-                          <tr key={dev.id} className="hover:bg-bg-elevated/20">
-                            <td className="p-3 font-semibold text-text-primary">{dev.location}</td>
-                            <td className="p-3 text-text-muted">{dev.name}</td>
-                            <td className="p-3 capitalize flex items-center gap-1.5">
-                              {renderTypeIcon(dev.type, "h-3.5 w-3.5")}
-                              <span>{dev.type.replace('_', ' ')}</span>
-                            </td>
-                            <td className="p-3">
-                              <span className="px-1.5 py-0.5 rounded bg-bg-elevated text-[10px] font-mono uppercase">
-                                {dev.protocol}
-                              </span>
-                            </td>
-                            <td className="p-3 font-mono text-accent">{dev.ip}:{dev.port}</td>
-                            <td className="p-3 font-mono text-text-muted">{dev.mac}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {step === 3 && (
-            <motion.div
-              key="step-3"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
-            >
-              <h2 className="text-base font-bold text-text-primary">Step 3: Deploy & Boot Virtual Workers</h2>
+              <h2 className="text-base font-bold text-text-primary">Step 2: Deploy & Boot Virtual Workers</h2>
 
               {!running && !completed ? (
-                <div className="text-center space-y-4 py-8">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-accent/10 text-accent">
-                    <Workflow className="h-7 w-7" />
+                <div className="space-y-6">
+                  {/* Dynamic Device Preview List */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-text-primary flex items-center gap-1.5">
+                        Allocation Preview <span className="text-xs font-normal text-text-muted">({totalDevices} Devices total)</span>
+                      </h3>
+                    </div>
+
+                    <div className="border border-border rounded-lg overflow-hidden bg-bg-surface">
+                      <div className="max-h-80 overflow-y-auto scrollbar-thin">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead className="bg-bg-elevated/50 text-text-muted sticky top-0 border-b border-border z-10">
+                            <tr>
+                              <th className="p-3 font-semibold">Location (Room)</th>
+                              <th className="p-3 font-semibold">Generated Device Name</th>
+                              <th className="p-3 font-semibold">Type</th>
+                              <th className="p-3 font-semibold">Protocol</th>
+                              <th className="p-3 font-semibold">IP Endpoint</th>
+                              <th className="p-3 font-semibold">MAC Address</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/40">
+                            {devicesToSpawn.map((dev) => (
+                              <tr key={dev.id} className="hover:bg-bg-elevated/20">
+                                <td className="p-3 font-semibold text-text-primary">{dev.location}</td>
+                                <td className="p-3 text-text-muted">{dev.name}</td>
+                                <td className="p-3 capitalize flex items-center gap-1.5">
+                                  {renderTypeIcon(dev.type, "h-3.5 w-3.5")}
+                                  <span>{dev.type.replace('_', ' ')}</span>
+                                </td>
+                                <td className="p-3">
+                                  <span className="px-1.5 py-0.5 rounded bg-bg-elevated text-[10px] font-mono uppercase">
+                                    {dev.protocol}
+                                  </span>
+                                </td>
+                                <td className="p-3 font-mono text-accent">
+                                  {USE_MOCK_API ? `${dev.ip}:${dev.port}` : 'Auto-Assigned'}
+                                </td>
+                                <td className="p-3 font-mono text-text-muted">
+                                  {USE_MOCK_API ? dev.mac : 'Auto-Assigned'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <h3 className="font-bold text-text-primary text-base">Ready to spawn {totalDevices} workers</h3>
-                    <p className="text-xs text-text-muted max-w-sm mx-auto leading-relaxed">
-                      This will register and start {totalDevices} simulated virtual devices across {rooms.length} room zones in the dashboard environment.
-                    </p>
+
+                  <div className="text-center space-y-4 py-8 border-t border-border/40 pt-8">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-accent/10 text-accent">
+                      <Workflow className="h-7 w-7" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <h3 className="font-bold text-text-primary text-base">Ready to spawn {totalDevices} workers</h3>
+                      <p className="text-xs text-text-muted max-w-sm mx-auto leading-relaxed">
+                        This will register and start {totalDevices} simulated virtual devices across {rooms.length} room zones in the dashboard environment.
+                      </p>
+                    </div>
+                    <Button onClick={handleStartDeployment} className="bg-accent hover:bg-accent/90 text-white min-h-[44px] px-8 cursor-pointer rounded-lg font-semibold shadow-md">
+                      <Play className="mr-1.5 h-4.5 w-4.5" /> Initiate Bulk Spawn
+                    </Button>
                   </div>
-                  <Button onClick={handleStartDeployment} className="bg-accent hover:bg-accent/90 text-white min-h-[44px] px-8 cursor-pointer rounded-lg font-semibold shadow-md">
-                    <Play className="mr-1.5 h-4.5 w-4.5" /> Initiate Bulk Spawn
-                  </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -642,7 +606,7 @@ export function FleetGeneratorWizard() {
       </div>
 
       {/* Navigation button controls */}
-      {step < 3 && (
+      {!running && !completed && (
         <div className="flex justify-between border-t border-border/40 pt-4">
           <Button
             variant="outline"
@@ -652,13 +616,15 @@ export function FleetGeneratorWizard() {
           >
             <ArrowLeft className="mr-1.5 h-4.5 w-4.5" /> Back
           </Button>
-          <Button
-            onClick={handleNextStep}
-            disabled={step === 1 && totalDevices === 0}
-            className="bg-accent hover:bg-accent/90 text-white min-h-[40px] px-6 font-semibold cursor-pointer rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next <ArrowRight className="ml-1.5 h-4.5 w-4.5" />
-          </Button>
+          {step < 2 && (
+            <Button
+              onClick={handleNextStep}
+              disabled={step === 1 && totalDevices === 0}
+              className="bg-accent hover:bg-accent/90 text-white min-h-[40px] px-6 font-semibold cursor-pointer rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next <ArrowRight className="ml-1.5 h-4.5 w-4.5" />
+            </Button>
+          )}
         </div>
       )}
     </div>
