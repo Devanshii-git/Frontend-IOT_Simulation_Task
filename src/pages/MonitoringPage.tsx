@@ -1,22 +1,14 @@
 import { useEffect, useState, Suspense, lazy } from 'react'
-import { Download, RefreshCw, Layers, Palette } from 'lucide-react'
+import { Download, Layers, Palette } from 'lucide-react'
 
 const TelemetryChart = lazy(() => import('@/components/monitoring/TelemetryChart'))
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Select } from '@/components/ui/Select'
 import { useDeviceStore } from '@/store/deviceStore'
 import { getPrimaryMetricKey } from '@/utils/simulatorDevices'
 import { exportTelemetryApi } from '@/services/api'
 import { useToastStore } from '@/store/toastStore'
 import type { SimulatorDeviceType } from '@/types'
-
-const REFRESH_OPTIONS = [
-  { value: '5000', label: '5 seconds' },
-  { value: '10000', label: '10 seconds' },
-  { value: '30000', label: '30 seconds' },
-  { value: 'manual', label: 'Manual' },
-]
 
 function getMetricValue(
   deviceType: SimulatorDeviceType,
@@ -27,27 +19,55 @@ function getMetricValue(
   return typeof value === 'number' ? value : null
 }
 
+import { telemetryWs } from '@/services/websocket'
+
 export function MonitoringPage() {
   const runningDevices = useDeviceStore((s) => s.runningDevices)
   const telemetry = useDeviceStore((s) => s.telemetry)
   const refreshAll = useDeviceStore((s) => s.refreshAll)
   const [selectedDevices, setSelectedDevices] = useState<string[]>([])
-  const [refreshInterval, setRefreshInterval] = useState('10000')
-  // Removed local fetchError state
+  const [isLive] = useState(true)
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        await refreshAll()
-      } catch (err) {
-        console.warn('Failed to load telemetry in background:', err)
-      }
+    // 1. Initial load
+    refreshAll().catch((err) => console.warn('Failed to load initial telemetry:', err))
+
+    if (!isLive) return
+
+    // 2. Subscribe to WebSocket for all running devices
+    const cleanupFns: Array<() => void> = []
+
+    runningDevices.forEach((deviceId) => {
+      telemetryWs.send({ action: 'subscribe', deviceId })
+
+      const cleanup = telemetryWs.onMessage(deviceId, (liveData) => {
+        const state = useDeviceStore.getState()
+        const dev = state.devices.find((d) => d.id === deviceId)
+        if (!dev) return
+
+        const updatedTelemetry: any = {
+          device_id: deviceId,
+          device_type: dev.type,
+          timestamp: liveData.timestamp,
+        }
+        updatedTelemetry[liveData.metric] = liveData.value
+
+        const existing = state.telemetry[deviceId] || {}
+        state.setTelemetry({
+          ...state.telemetry,
+          [deviceId]: { ...existing, ...updatedTelemetry },
+        })
+      })
+      cleanupFns.push(cleanup)
+    })
+
+    return () => {
+      cleanupFns.forEach((fn) => fn())
+      runningDevices.forEach((deviceId) => {
+        telemetryWs.send({ action: 'unsubscribe', deviceId })
+      })
     }
-    load()
-    if (refreshInterval === 'manual') return
-    const poll = setInterval(load, Number(refreshInterval))
-    return () => clearInterval(poll)
-  }, [refreshAll, refreshInterval])
+  }, [runningDevices, refreshAll, isLive])
 
   const toggleDevice = (id: string) => {
     setSelectedDevices((prev) => {
@@ -143,13 +163,6 @@ export function MonitoringPage() {
     }
   }
 
-  const handleManualRefresh = async () => {
-    try {
-      await refreshAll()
-    } catch (err) {
-      console.error('Failed to manually refresh telemetry:', err)
-    }
-  }
 
   return (
     <div className="space-y-6 select-none animate-in fade-in duration-300">
@@ -159,10 +172,10 @@ export function MonitoringPage() {
           <p className="text-sm text-text-muted font-medium">Analyze real-time sensor streams and telemetry charts.</p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
-          <Select options={REFRESH_OPTIONS} value={refreshInterval} onChange={(e) => setRefreshInterval(e.target.value)} className="w-36 h-10" />
-          <Button variant="outline" size="icon" className="h-10 w-10" onClick={handleManualRefresh}>
-            <RefreshCw className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 text-emerald-500 rounded-md text-sm font-semibold border border-emerald-500/20">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Live (WebSocket)
+          </div>
           <Button variant="outline" className="h-10 text-xs" onClick={() => handleExport('csv')}>
             <Download className="h-4 w-4" /> CSV
           </Button>
