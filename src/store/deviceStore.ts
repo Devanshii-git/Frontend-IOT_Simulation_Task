@@ -697,6 +697,12 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
             })
             const dbDevice = devRes.data
 
+            // UPDATE the frontend object to use the real Postgres ID!
+            const newDevIndex = newDevs.findIndex(d => d.id === dev.id)
+            if (newDevIndex !== -1) {
+              newDevs[newDevIndex].id = dbDevice.id
+            }
+
             // 2. Create Configuration properties in DB
             await httpClient.post(`${rootUrl}/device-configurations`, {
               device_id: dbDevice.id,
@@ -722,7 +728,8 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
     }
 
     set(s => ({
-      spawnedFleet: [...s.spawnedFleet, ...newDevs]
+      spawnedFleet: [...s.spawnedFleet, ...newDevs],
+      runningDevices: [...s.runningDevices, ...newDevs.map(d => d.id)]
     }))
     await get().fetchDevices()
   },
