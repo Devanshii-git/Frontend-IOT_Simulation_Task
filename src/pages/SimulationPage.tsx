@@ -17,7 +17,7 @@ import {
   formatSimulatorTimestamp,
   getPrimaryMetricKey,
 } from '@/utils/simulatorDevices'
-import type { LatestTelemetry, SimulatorDeviceType } from '@/types'
+import type { LatestTelemetry } from '@/types'
 import { cn } from '@/utils/cn'
 
 type TimeRange = '-30m' | '-1h' | '-24h'
@@ -63,55 +63,31 @@ function formatChartTimestamp(ts: string): string {
   }
 }
 
-function DeviceMetrics({ deviceType, telemetry }: {
-  deviceType: SimulatorDeviceType
+function DeviceMetrics({ telemetry }: {
   telemetry: LatestTelemetry
 }) {
+  const ignoreKeys = ['device_id', 'device_type', 'timestamp']
+  const metrics = Object.entries(telemetry).filter(([k, v]) => !ignoreKeys.includes(k) && (typeof v === 'number' || typeof v === 'string'))
+
   return (
     <div className="mt-4 space-y-1.5 text-sm">
-      {deviceType === 'temperature_sensor' && (
-        <>
-          {telemetry.temperature != null && (
-            <p><span className="text-text-muted">Temperature:</span> <span className="font-semibold">{telemetry.temperature}°C</span></p>
-          )}
-          {telemetry.battery != null && (
-            <p><span className="text-text-muted">Battery:</span> <span className="font-semibold">{telemetry.battery}%</span></p>
-          )}
-        </>
-      )}
-      {deviceType === 'speaker' && (
-        <>
-          {telemetry.volume != null && (
-            <p><span className="text-text-muted">Volume:</span> <span className="font-semibold">{telemetry.volume}</span></p>
-          )}
-          {telemetry.battery != null && (
-            <p><span className="text-text-muted">Battery:</span> <span className="font-semibold">{telemetry.battery}%</span></p>
-          )}
-        </>
-      )}
-      {deviceType === 'camera' && (
-        <>
-          {telemetry.fps != null && (
-            <p><span className="text-text-muted">FPS:</span> <span className="font-semibold">{telemetry.fps}</span></p>
-          )}
-          {telemetry.battery != null && (
-            <p><span className="text-text-muted">Battery:</span> <span className="font-semibold">{telemetry.battery}%</span></p>
-          )}
-        </>
-      )}
-      {deviceType === 'microphone' && telemetry.battery != null && (
-        <p><span className="text-text-muted">Battery:</span> <span className="font-semibold">{telemetry.battery}%</span></p>
-      )}
-      {deviceType === 'projector' && (
-        <>
-          {telemetry.brightness != null && (
-            <p><span className="text-text-muted">Brightness:</span> <span className="font-semibold">{telemetry.brightness}</span></p>
-          )}
-          {telemetry.battery != null && (
-            <p><span className="text-text-muted">Battery:</span> <span className="font-semibold">{telemetry.battery}%</span></p>
-          )}
-        </>
-      )}
+      {metrics.map(([key, value]) => {
+        let label = key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')
+        let formattedValue = typeof value === 'number' ? (Number.isInteger(value) ? value : value.toFixed(1)) : value
+        
+        if (key === 'temperature') {
+          formattedValue = `${formattedValue}°C`
+        } else if (key === 'battery' || key === 'volume' || key === 'audio_level') {
+          formattedValue = `${formattedValue}%`
+        }
+
+        return (
+          <p key={key}>
+            <span className="text-text-muted">{label}:</span>{' '}
+            <span className="font-semibold">{formattedValue}</span>
+          </p>
+        )
+      })}
     </div>
   )
 }
@@ -130,16 +106,27 @@ export function SimulationPage() {
   const [historyLoading, setHistoryLoading] = useState(false)
 
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>
+    let isMounted = true
+
     const load = async () => {
       try {
         await refreshAll()
       } catch (err) {
         console.warn('Failed to load running simulations in background:', err)
       }
+      
+      if (isMounted) {
+        timeoutId = setTimeout(load, 15000)
+      }
     }
+    
     load()
-    const interval = setInterval(load, 10000)
-    return () => clearInterval(interval)
+    
+    return () => {
+      isMounted = false
+      if (timeoutId) clearTimeout(timeoutId)
+    }
   }, [refreshAll])
 
   const fetchHistory = useCallback(async (deviceId: string, range: TimeRange) => {
@@ -162,7 +149,23 @@ export function SimulationPage() {
       setHistoryData([])
       return
     }
-    fetchHistory(selectedDeviceId, timeRange)
+
+    let timeoutId: ReturnType<typeof setTimeout>
+    let isMounted = true
+
+    const loadHistory = async () => {
+      await fetchHistory(selectedDeviceId, timeRange)
+      if (isMounted) {
+        timeoutId = setTimeout(loadHistory, 15000)
+      }
+    }
+
+    loadHistory()
+
+    return () => {
+      isMounted = false
+      if (timeoutId) clearTimeout(timeoutId)
+    }
   }, [selectedDeviceId, timeRange, fetchHistory])
 
   const handleStop = async (deviceId: string) => {
@@ -229,7 +232,7 @@ export function SimulationPage() {
                 {tel?.timestamp && (
                   <p className="mt-3 text-xs text-text-muted">{formatSimulatorTimestamp(tel.timestamp)}</p>
                 )}
-                {deviceType && tel && <DeviceMetrics deviceType={deviceType} telemetry={tel} />}
+                {deviceType && tel && <DeviceMetrics telemetry={tel} />}
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); handleStop(deviceId) }}

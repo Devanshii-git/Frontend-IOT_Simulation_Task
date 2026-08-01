@@ -93,7 +93,7 @@ interface DeviceState {
   setWizardConfig: (config: { startingIp: string; startingPort: number; startingMac: string }) => void
   resetWizard: () => void
 
-  fetchDevices: () => Promise<void>
+  fetchDevices: (background?: boolean) => Promise<void>
   addDevice: (payload: Omit<Device, 'id' | 'status' | 'isToggledOn' | 'signalStrength' | 'lastPing'>) => Promise<void>
   toggleDevice: (id: string, isToggledOn: boolean) => Promise<void>
   updateDeviceDetails: (id: string, payload: Partial<Device>) => Promise<void>
@@ -125,16 +125,20 @@ const defaultFilters: DeviceFilters = { type: 'all', status: 'all', location: ''
 const KNOWN_DEVICE_TYPES: DeviceType[] = ['temperature_sensor', 'projector', 'camera', 'microphone', 'speaker']
 
 const mapDeviceTypeName = (name: string): DeviceType => {
-  const lower = name.toLowerCase()
-  if (lower.includes('temp') || lower.includes('thermostat')) return 'temperature_sensor'
-  if (lower.includes('projector')) return 'projector'
-  if (lower.includes('camera') || lower.includes('cctv')) return 'camera'
-  if (lower.includes('mic')) return 'microphone'
-  if (lower.includes('speaker') || lower.includes('audio')) return 'speaker'
-  const normalized = lower.replace(/\s+/g, '_') as DeviceType
+  if (!name) return 'generic_device'
+  const normalized = name.toLowerCase() as DeviceType
   if (KNOWN_DEVICE_TYPES.includes(normalized)) return normalized
-  console.warn(`Unknown device type name: "${name}", could not map to a known type`)
-  return normalized
+  
+  // Try keyword mapping for common types that might not match exact casing/spacing
+  if (normalized.includes('temp') || normalized.includes('thermostat')) return 'temperature_sensor'
+  if (normalized.includes('proj')) return 'projector'
+  if (normalized.includes('cam')) return 'camera'
+  if (normalized.includes('mic')) return 'microphone'
+  if (normalized.includes('speak') || normalized.includes('audio')) return 'speaker'
+
+  // If it's an AI-generated type that we don't know, preserve its name
+  // The UI will now dynamically render it
+  return name as DeviceType
 }
 
 const getOrCreateUser = async (): Promise<string> => {
@@ -172,9 +176,14 @@ const typeDisplayNames: Record<string, string> = {
   speaker: 'Speaker',
 }
 
+let _typeCache: Record<string, string> = {}
+let _protoCache: Record<string, string> = {}
+
 const getOrCreateDeviceType = async (type: string): Promise<string> => {
   const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
   const displayName = typeDisplayNames[type] ?? type
+  if (_typeCache[displayName]) return _typeCache[displayName]
+
   try {
     const res = await httpClient.get(`${rootUrl}/device-types`)
     const list = res.data
@@ -182,12 +191,16 @@ const getOrCreateDeviceType = async (type: string): Promise<string> => {
       dt.name.toLowerCase().includes(type.toLowerCase()) ||
       dt.name.toLowerCase().includes(displayName.toLowerCase())
     )
-    if (found) return found.id
+    if (found) {
+      _typeCache[displayName] = found.id
+      return found.id
+    }
 
     const createRes = await httpClient.post(`${rootUrl}/device-types`, {
       name: displayName,
       description: `Device type for ${type}`,
     })
+    _typeCache[displayName] = createRes.data.id
     return createRes.data.id
   } catch (e) {
     console.error('Error getting or creating device type', e)
@@ -197,16 +210,22 @@ const getOrCreateDeviceType = async (type: string): Promise<string> => {
 
 const getOrCreateProtocol = async (proto: string): Promise<string> => {
   const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
+  if (_protoCache[proto]) return _protoCache[proto]
+
   try {
     const res = await httpClient.get(`${rootUrl}/protocols`)
     const list = res.data
     const found = list.find((p: any) => p.name.toUpperCase() === proto.toUpperCase())
-    if (found) return found.id
+    if (found) {
+      _protoCache[proto] = found.id
+      return found.id
+    }
 
     const createRes = await httpClient.post(`${rootUrl}/protocols`, {
       name: proto,
       description: `Protocol ${proto}`,
     })
+    _protoCache[proto] = createRes.data.id
     return createRes.data.id
   } catch (e) {
     console.error('Error getting or creating protocol', e)
@@ -231,7 +250,8 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
         speaker: 2,
         microphone: 1,
         camera: 1,
-        temperature_sensor: 1
+        temperature_sensor: 1,
+        generic_device: 0
       }
     },
     {
@@ -242,7 +262,8 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
         speaker: 4,
         microphone: 2,
         camera: 1,
-        temperature_sensor: 0
+        temperature_sensor: 0,
+        generic_device: 0
       }
     }
   ],
@@ -263,7 +284,8 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
           speaker: 2,
           microphone: 1,
           camera: 1,
-          temperature_sensor: 1
+          temperature_sensor: 1,
+          generic_device: 0
         }
       },
       {
@@ -274,7 +296,8 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
           speaker: 4,
           microphone: 2,
           camera: 1,
-          temperature_sensor: 0
+          temperature_sensor: 0,
+          generic_device: 0
         }
       }
     ],
@@ -298,8 +321,8 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       }
     }),
 
-  fetchDevices: async () => {
-    set({ loading: true })
+  fetchDevices: async (background = false) => {
+    if (!background) set({ loading: true })
     if (USE_MOCK_API) {
       if (get().devices.length === 0) {
         set({
@@ -307,7 +330,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
           runningDevices: MOCK_DEVICES.filter((d) => d.isToggledOn).map((d) => d.id),
         })
       }
-      set({ loading: false })
+      if (!background) set({ loading: false })
       return
     }
     const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
@@ -328,19 +351,11 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       const protosMap = new Map<string, string>(protocols.map((p: any) => [p.id, p.name]))
       const configsMap = new Map<string, Record<string, any>>(configurations.map((c: any) => [c.device_id, c.properties]))
 
-      let activeRunning: string[] = []
-      try {
-        const simRes = await httpClient.get(`${DEVICE_SIMULATOR_BASE_URL}/simulation/running`)
-        activeRunning = simRes.data.running_devices ?? []
-      } catch (e) {
-        console.warn('Simulation server unreachable for statuses', e)
-      }
-
       const mappedDevices: Device[] = rawDevices.map((d: any) => {
         const typeName = typesMap.get(d.device_type_id) ?? d.device_type_id ?? 'unknown'
         const protoName = protosMap.get(d.protocol_id) ?? 'HTTP'
         const properties = configsMap.get(d.id) ?? {}
-        const isRunning = activeRunning.includes(d.id)
+        const isRunning = d.status === 'RUNNING'
 
         return {
           id: d.id,
@@ -358,13 +373,14 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
 
       const spawnedFleet = get().spawnedFleet || []
       const mergedDevices = [...mappedDevices, ...spawnedFleet]
-      const mergedRunning = Array.from(new Set([...activeRunning, ...spawnedFleet.map(d => d.id)]))
+      const mergedRunning = mergedDevices.filter(d => d.isToggledOn).map(d => d.id)
+      
       set({ devices: mergedDevices, runningDevices: mergedRunning })
     } catch (err) {
       console.error('Error fetching devices, setting empty', err)
       set({ devices: [], runningDevices: [] })
     } finally {
-      set({ loading: false })
+      if (!background) set({ loading: false })
     }
   },
 
@@ -482,13 +498,8 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   deleteDevice: async (id) => {
     const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
 
-    if (get().runningDevices.includes(id)) {
-      try {
-        await get().stopSimulation(id)
-      } catch (e) {
-        console.warn('Failed to stop simulation before deleting', e)
-      }
-    }
+    // The backend DELETE /devices endpoint automatically kills the VDR simulation.
+    // We do not need to call stopSimulation here manually.
 
     try {
       const configsRes = await httpClient.get(`${rootUrl}/device-configurations`)
@@ -534,55 +545,56 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   },
 
   fetchRunningDevices: async () => {
-    try {
-      const res = await httpClient.get(`${DEVICE_SIMULATOR_BASE_URL}/simulation/running`)
-      const devices: string[] = res.data.running_devices ?? []
-      set({ runningDevices: devices })
-      return devices
-    } catch (e) {
-      console.warn('Simulation server offline, using local running devices list:', e)
-      const devices = get().devices.filter(d => d.isToggledOn).map(d => d.id)
-      set({ runningDevices: devices })
-      return devices
-    }
+    // Rely on the PostgreSQL database status instead of the VDR simulator status.
+    // The device list is kept in sync with the DB in fetchDevices().
+    const devices = get().devices.filter(d => d.isToggledOn).map(d => d.id)
+    set({ runningDevices: devices })
+    return devices
   },
 
   fetchTelemetryForDevices: async (deviceIds) => {
-    const entries = await Promise.all(
-      deviceIds.map(async (deviceId) => {
-        try {
-          const res = await httpClient.get(`${TELEMETRY_BASE_URL}/telemetry/latest/${deviceId}`)
-          const data = res.data
-          const telemetry: LatestTelemetry = {
-            device_id: deviceId,
-            device_type: data.device_type,
-            temperature: data.temperature,
-            battery: data.battery_level ?? data.battery,
-            volume: data.volume,
-            brightness: data.brightness,
-            fps: data.fps,
-            timestamp: data.timestamp ?? new Date().toISOString(),
-          }
-          return [deviceId, telemetry] as const
-        } catch {
-          const device = get().devices.find(d => d.id === deviceId)
-          const devType = device?.type ?? 'unknown'
-          const simType: SimulatorDeviceType = devType as SimulatorDeviceType
+    if (deviceIds.length === 0) return
 
-          const mockTelemetry: LatestTelemetry = {
-            device_id: deviceId,
-            device_type: simType,
-            temperature: simType === 'temperature_sensor' ? 0 : undefined,
-            battery: 0,
-            volume: simType === 'speaker' ? 0 : undefined,
-            brightness: simType === 'projector' ? 0 : undefined,
-            fps: simType === 'camera' ? 0 : undefined,
-            timestamp: new Date().toISOString(),
-          }
-          return [deviceId, mockTelemetry] as const
+    let bulkData: Record<string, any> = {}
+    try {
+      const res = await httpClient.post(`${TELEMETRY_BASE_URL}/telemetry/latest/bulk`, deviceIds)
+      bulkData = res.data || {}
+    } catch (e) {
+      console.warn('Failed to bulk fetch telemetry, falling back to mock generator', e)
+    }
+
+    const entries = deviceIds.map((deviceId) => {
+      const data = bulkData[deviceId]
+      if (data) {
+        const telemetry: LatestTelemetry = {
+          device_id: deviceId,
+          device_type: data.device_type,
+          temperature: data.temperature,
+          battery: data.battery_level ?? data.battery,
+          volume: data.volume,
+          brightness: data.brightness,
+          fps: data.fps,
+          timestamp: data.timestamp ?? new Date().toISOString(),
         }
-      }),
-    )
+        return [deviceId, telemetry] as const
+      } else {
+        const device = get().devices.find(d => d.id === deviceId)
+        const devType = device?.type ?? 'unknown'
+        const simType: SimulatorDeviceType = devType as SimulatorDeviceType
+
+        const mockTelemetry: LatestTelemetry = {
+          device_id: deviceId,
+          device_type: simType,
+          temperature: simType === 'temperature_sensor' ? 0 : undefined,
+          battery: 0,
+          volume: simType === 'speaker' ? 0 : undefined,
+          brightness: simType === 'projector' ? 0 : undefined,
+          fps: simType === 'camera' ? 0 : undefined,
+          timestamp: new Date().toISOString(),
+        }
+        return [deviceId, mockTelemetry] as const
+      }
+    })
 
     const nextMap: Record<string, LatestTelemetry> = {}
     for (const [id, telemetry] of entries) {
@@ -592,15 +604,14 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   },
 
   refreshAll: async () => {
-    set({ loading: true })
     try {
-      await get().fetchDevices()
+      // Fetch latest devices from postgres to ensure we have the true "RUNNING" status (in background mode)
+      await get().fetchDevices(true)
+      
       const devices = await get().fetchRunningDevices()
       await get().fetchTelemetryForDevices(devices)
     } catch (e) {
       console.error('Error refreshing all store status', e)
-    } finally {
-      set({ loading: false })
     }
   },
 
@@ -666,40 +677,51 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
       const userId = await getOrCreateUser()
 
-      for (const dev of devicesToSpawn) {
-        try {
-          const deviceTypeId = await getOrCreateDeviceType(dev.type)
-          const protocolId = await getOrCreateProtocol(dev.protocol)
+      // Process in chunks of 10 to avoid overwhelming the backend
+      const chunkSize = 10;
+      for (let i = 0; i < devicesToSpawn.length; i += chunkSize) {
+        const chunk = devicesToSpawn.slice(i, i + chunkSize);
+        await Promise.all(chunk.map(async (dev) => {
+          try {
+            const deviceTypeId = await getOrCreateDeviceType(dev.type)
+            const protocolId = await getOrCreateProtocol(dev.protocol)
 
-          // 1. Create the Device in DB
-          const devRes = await httpClient.post(`${rootUrl}/devices`, {
-            user_id: userId,
-            device_type_id: deviceTypeId,
-            protocol_id: protocolId,
-            device_name: dev.name,
-            status: 'CREATED',
-            azure_device_id: null,
-          })
-          const dbDevice = devRes.data
+            // 1. Create the Device in DB
+            const devRes = await httpClient.post(`${rootUrl}/devices`, {
+              user_id: userId,
+              device_type_id: deviceTypeId,
+              protocol_id: protocolId,
+              device_name: dev.name,
+              status: 'CREATED',
+              azure_device_id: null,
+            })
+            const dbDevice = devRes.data
 
-          // 2. Create Configuration properties in DB
-          await httpClient.post(`${rootUrl}/device-configurations`, {
-            device_id: dbDevice.id,
-            properties: {
-              location: dev.location,
-              ipAddress: dev.ip,
-            },
-          })
+            // UPDATE the frontend object to use the real Postgres ID!
+            const newDevIndex = newDevs.findIndex(d => d.id === dev.id)
+            if (newDevIndex !== -1) {
+              newDevs[newDevIndex].id = dbDevice.id
+            }
 
-          // 3. Spawn/Start simulation in VDR via simulation start
-          await httpClient.post(`${DEVICE_SIMULATOR_BASE_URL}/simulation/start`, {
-            device_id: dbDevice.id,
-            device_type: dev.type as SimulatorDeviceType,
-            interval: 5
-          })
-        } catch (innerErr) {
-          console.error(`Failed to register or start device ${dev.name}`, innerErr)
-        }
+            // 2. Create Configuration properties in DB
+            await httpClient.post(`${rootUrl}/device-configurations`, {
+              device_id: dbDevice.id,
+              properties: {
+                location: dev.location,
+                ipAddress: dev.ip,
+              },
+            })
+
+            // 3. Spawn/Start simulation in VDR via simulation start
+            await httpClient.post(`${DEVICE_SIMULATOR_BASE_URL}/simulation/start`, {
+              device_id: dbDevice.id,
+              device_type: dev.type as SimulatorDeviceType,
+              interval: 5
+            })
+          } catch (innerErr) {
+            console.error(`Failed to register or start device ${dev.name}`, innerErr)
+          }
+        }))
       }
     } catch (e) {
       console.error('Error bulk spawning devices on Live Backend / VDR', e)
@@ -721,18 +743,20 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
     }
 
     try {
+
       const rootUrl = TELEMETRY_BASE_URL.replace('/api/v1', '')
-      for (const id of ids) {
-        try {
-          await httpClient.post(`${DEVICE_SIMULATOR_BASE_URL}/simulation/stop`, { device_id: id })
-        } catch (simErr) {
-          console.warn(`Failed to stop simulation for device ${id}`, simErr)
-        }
-        try {
-          await httpClient.delete(`${rootUrl}/devices/${id}`)
-        } catch (dbErr) {
-          console.warn(`Failed to delete device ${id} from database`, dbErr)
-        }
+      const chunkSize = 10;
+      for (let i = 0; i < ids.length; i += chunkSize) {
+        const chunk = ids.slice(i, i + chunkSize);
+        await Promise.all(chunk.map(async (id) => {
+          try {
+            // Note: The backend DELETE /devices endpoint now automatically handles killing the VDR simulation.
+            // We no longer need to call /simulation/stop manually!
+            await httpClient.delete(`${rootUrl}/devices/${id}`)
+          } catch (dbErr) {
+            console.warn(`Failed to delete device ${id} from database`, dbErr)
+          }
+        }))
       }
     } catch (e) {
       console.error('Error bulk killing devices on Live Backend', e)

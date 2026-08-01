@@ -1,5 +1,5 @@
 import {
-  Thermometer, Camera, Mic, Speaker, Projector,
+  Thermometer, Camera, Mic, Speaker, Projector, Box,
   type LucideIcon,
 } from 'lucide-react'
 import type { DeviceType } from '@/types'
@@ -10,6 +10,7 @@ export const deviceTypeConfig: Record<DeviceType, { label: string; icon: LucideI
   microphone: { label: 'Microphone', icon: Mic, color: 'text-text-muted bg-bg-elevated' },
   speaker: { label: 'Speaker', icon: Speaker, color: 'text-text-muted bg-bg-elevated' },
   temperature_sensor: { label: 'Temperature Sensor', icon: Thermometer, color: 'text-text-muted bg-bg-elevated' },
+  generic_device: { label: 'Generic Device', icon: Box, color: 'text-text-muted bg-bg-elevated' },
 }
 
 export const deviceTypeOptions = Object.entries(deviceTypeConfig).map(([value, { label }]) => ({ value, label }))

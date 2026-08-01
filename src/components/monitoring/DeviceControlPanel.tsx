@@ -133,6 +133,10 @@ const COMMAND_MAP: Record<DeviceType, CommandConfig[]> = {
     { id: 'freeze_frame', label: 'Freeze Frame', icon: Pause, variant: 'outline' },
     { id: 'reboot', label: 'Reboot Projector', icon: RotateCcw, variant: 'danger' },
   ],
+  generic_device: [
+    { id: 'toggle_power', label: 'Toggle Power', icon: Power, variant: 'outline' },
+    { id: 'reboot', label: 'Reboot Device', icon: RotateCcw, variant: 'danger' },
+  ]
 }
 
 export function DeviceControlPanel({ device, supportedCommands }: DeviceControlPanelProps) {
